@@ -21,16 +21,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server;
+package de.futuresqr.server.server.model.user;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import java.time.Instant;
 
-@SpringBootApplication
-public class FutureSqrServerApplication {
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Data;
 
-	public static void main(String[] args) {
-		SpringApplication.run(FutureSqrServerApplication.class, args);
-	}
+@Data
+@Entity
+@Table(name = "fsqrUser") // table name 'user' is reserved in databases
+/**
+ * Data model for the user of the FutureSQR application.
+ * 
+ * @author Robert Breunung
+ */
+public class User {
 
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private long id;
+
+	private String name;
+	private String email;
+	private Instant lastChange = Instant.now();
+	private boolean locked;
 }

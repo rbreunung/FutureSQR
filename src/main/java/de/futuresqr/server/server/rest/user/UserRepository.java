@@ -21,16 +21,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server;
+package de.futuresqr.server.server.rest.user;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.rest.core.annotation.RepositoryRestResource;
+import org.springframework.data.rest.core.annotation.RestResource;
 
-@SpringBootApplication
-public class FutureSqrServerApplication {
+import de.futuresqr.server.server.model.user.User;
 
-	public static void main(String[] args) {
-		SpringApplication.run(FutureSqrServerApplication.class, args);
-	}
+/**
+ * This is the application user repository of our FutureSQR application.
+ * 
+ * @author Robert Breunung
+ */
 
+@RepositoryRestResource(collectionResourceRel = "user", path = "user")
+public interface UserRepository extends JpaRepository<User, Long> {
+
+	@RestResource(path = "nameContains")
+	public Page<User> findByNameContaining(@Param("name") String name, Pageable p);
 }
