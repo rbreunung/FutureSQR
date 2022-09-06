@@ -26,6 +26,11 @@ package de.futuresqr.server.server;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 
+/**
+ * Basic servlet initializer as required by Tomcat.
+ * 
+ * @author Robert Breunung
+ */
 public class ServletInitializer extends SpringBootServletInitializer {
 
 	@Override

@@ -23,31 +23,50 @@
  */
 package de.futuresqr.server.server.model.user;
 
-import java.time.Instant;
+import static lombok.AccessLevel.PRIVATE;
 
+import java.time.Instant;
+import java.util.UUID;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Data
-@Entity
-@Table(name = "fsqrUser") // table name 'user' is reserved in databases
 /**
  * Data model for the user of the FutureSQR application.
  * 
  * @author Robert Breunung
  */
+@AllArgsConstructor(access = PRIVATE)
+@NoArgsConstructor
+@Builder
+@Data
+@Entity
+//table name 'user' is reserved in databases
+@Table(name = "fsqrUser", uniqueConstraints = { @UniqueConstraint(columnNames = "loginName"),
+		@UniqueConstraint(columnNames = "email") })
 public class User {
 
+	private boolean banned;
+	private Instant bannedDate;
+	@Builder.Default
+	private Instant createdDate = Instant.now();
+	private String displayName;
+	private String email;
+	@Builder.Default
+	private Instant lastChangeDate = Instant.now();
+	@Column(name = "loginName")
+	private String loginName;
+	private String password;
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
-	private long id;
-
-	private String name;
-	private String email;
-	private Instant lastChange = Instant.now();
-	private boolean locked;
+	private UUID uuid;
 }

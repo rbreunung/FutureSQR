@@ -21,31 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server.rest.user;
+package de.futuresqr.server.server;
 
-import java.util.UUID;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
-import org.springframework.data.rest.core.annotation.RestResource;
-
-import de.futuresqr.server.server.model.user.User;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * This is the application user repository of our FutureSQR application.
+ * Main configuration for Spring Security.
  * 
  * @author Robert Breunung
  */
-@RepositoryRestResource(collectionResourceRel = "user", path = "user")
-public interface UserRepository extends JpaRepository<User, UUID> {
+@Configuration
+public class SecurityConfiguration {
 
-	@RestResource(path = "nameContains")
-	public Page<User> findByDisplayNameContaining(@Param("displayName") String displayName, Pageable p);
+	@Bean
+	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-	@RestResource(path = "loginContains")
-	public Slice<User> findByLoginNameContaining(@Param("loginName") String loginName);
+		http.authorizeHttpRequests() // authorization section
+				.antMatchers("/rest/login/**").permitAll() // rest login area
+				.antMatchers("/rest/**").authenticated(); // user repository area
+		http.formLogin().defaultSuccessUrl("/");
+
+		return http.build();
+	}
 }
