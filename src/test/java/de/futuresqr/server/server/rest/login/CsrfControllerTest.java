@@ -2,6 +2,7 @@ package de.futuresqr.server.server.rest.login;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -60,13 +61,18 @@ public class CsrfControllerTest {
 		ResponseEntity<String> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
 				String.class);
 
+		String result = getNewSetCookieContent(entity);
+		assertTrue(result.matches("^JSESSIONID=[a-zA-Z0-9]+$"));
+	}
+
+	/**
+	 * Get the cookie set by the server response.
+	 */
+	private String getNewSetCookieContent(ResponseEntity<?> entity) {
 		List<String> list = entity.getHeaders().get("Set-Cookie");
-
 		assertEquals(1, list.size(), "Expect a cookie set request.");
-
-		//TODO next test shall provide this for Login
-		String result = list.get(0).split(";")[0];
-		log.info(result);
+		log.info("Cookie set by server: {}", list.toString());
+		return list.get(0).split(";")[0];
 	}
 
 	@Test
