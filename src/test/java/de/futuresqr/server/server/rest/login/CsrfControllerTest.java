@@ -20,20 +20,27 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CsrfControllerTest {
 
-	@Autowired
-	private TestRestTemplate webclient;
-
 	@LocalServerPort
 	int serverPort;
 
+	@Autowired
+	private TestRestTemplate webclient;
+
 	@Test
-	public void getCsrf_validUrl_tokenPresent() throws Exception {
+	public void getCsrf() {
+		ResponseEntity<String> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
+				String.class);
+		log.info(entity.getHeaders().toString());
+		log.info(entity.getBody());
+	}
 
-		ResponseEntity<CsrfDto> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
-				CsrfDto.class);
+	@Test
+	public void getCsrf_validRequest_cookiePresent() {
+		ResponseEntity<String> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
+				String.class);
 
-		CsrfDto json = entity.getBody();
-		assertNotNull(json.getToken(), "CSRF token expected");
+		String result = getNewSetCookieContent(entity);
+		assertTrue(result.matches("^JSESSIONID=[a-zA-Z0-9]+$"));
 	}
 
 	@Test
@@ -57,12 +64,13 @@ public class CsrfControllerTest {
 	}
 
 	@Test
-	public void getCsrf_validRequest_cookiePresent() {
-		ResponseEntity<String> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
-				String.class);
+	public void getCsrf_validUrl_tokenPresent() throws Exception {
 
-		String result = getNewSetCookieContent(entity);
-		assertTrue(result.matches("^JSESSIONID=[a-zA-Z0-9]+$"));
+		ResponseEntity<CsrfDto> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
+				CsrfDto.class);
+
+		CsrfDto json = entity.getBody();
+		assertNotNull(json.getToken(), "CSRF token expected");
 	}
 
 	/**
@@ -73,13 +81,5 @@ public class CsrfControllerTest {
 		assertEquals(1, list.size(), "Expect a cookie set request.");
 		log.info("Cookie set by server: {}", list.toString());
 		return list.get(0).split(";")[0];
-	}
-
-	@Test
-	public void getCsrf() {
-		ResponseEntity<String> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
-				String.class);
-		log.info(entity.getHeaders().toString());
-		log.info(entity.getBody());
 	}
 }
