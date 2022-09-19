@@ -21,21 +21,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server;
+package de.futuresqr.server.rest.login;
 
-import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Basic servlet initializer as required by Tomcat.
+ * This is a test purpose controller. This implements responses used by test
+ * methods but not by the production environment.
  * 
  * @author Robert Breunung
  */
-public class ServletInitializer extends SpringBootServletInitializer {
+@RestController
+public class LoginTestController {
 
-	@Override
-	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
-		return application.sources(FutureSqrServerApplication.class);
+	@RequestMapping(path = "/rest/test/post")
+	ResponseEntity<String> postMessage(@RequestParam(name = "message", required = false) String message) {
+		return ResponseEntity.ok(message);
 	}
-
 }

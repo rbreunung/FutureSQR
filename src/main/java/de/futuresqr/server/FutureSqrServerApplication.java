@@ -21,23 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server.rest.login;
+package de.futuresqr.server;
 
-import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-/**
- * This controller provides on request the CSRF token belonging to the current
- * session.
- * 
- * @author Robert Breunung
- */
-@RestController
-public class CsrfController {
+@SpringBootApplication
+public class FutureSqrServerApplication {
 
-	@GetMapping("/rest/login/csrf")
-	public CsrfToken csrf(CsrfToken token) {
-		return token;
+	public static void main(String[] args) {
+		SpringApplication.run(FutureSqrServerApplication.class, args);
 	}
+
 }

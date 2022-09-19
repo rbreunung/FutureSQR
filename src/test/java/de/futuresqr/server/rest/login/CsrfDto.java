@@ -21,16 +21,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server;
+package de.futuresqr.server.rest.login;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import lombok.Data;
 
-@SpringBootApplication
-public class FutureSqrServerApplication {
+/**
+ * Class represents a CSRF serialized answer.
+ * 
+ * @author Robert Breunung
+ */
+@Data
+public class CsrfDto {
 
-	public static void main(String[] args) {
-		SpringApplication.run(FutureSqrServerApplication.class, args);
-	}
-
+	private String parameterName;
+	private String token;
+	private String headerName;
 }

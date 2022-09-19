@@ -21,31 +21,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server.rest.user;
+package de.futuresqr.server.rest;
 
-import java.util.UUID;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
-import org.springframework.data.rest.core.annotation.RestResource;
-
-import de.futuresqr.server.server.model.user.User;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
- * This is the application user repository of our FutureSQR application.
+ * This controller provides on request the CSRF token belonging to the current
+ * session.
  * 
  * @author Robert Breunung
  */
-@RepositoryRestResource(collectionResourceRel = "user", path = "user")
-public interface UserRepository extends JpaRepository<User, UUID> {
+@RestController
+public class CsrfController {
 
-	@RestResource(path = "nameContains")
-	public Page<User> findByDisplayNameContaining(@Param("displayName") String displayName, Pageable p);
-
-	@RestResource(path = "loginContains")
-	public Slice<User> findByLoginNameContaining(@Param("loginName") String loginName);
+	@GetMapping("/rest/login/csrf")
+	public CsrfToken csrf(CsrfToken token) {
+		return token;
+	}
 }

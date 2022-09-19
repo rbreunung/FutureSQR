@@ -21,24 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server.rest.login;
+package de.futuresqr.server;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
 
-/**
- * This is a test purpose controller. This implements responses used by test
- * methods but not by the production environment.
- * 
- * @author Robert Breunung
- */
-@RestController
-public class LoginTestController {
+@SpringBootTest
+class FutureSqrServerApplicationTests {
 
-	@RequestMapping(path = "/rest/test/post")
-	ResponseEntity<String> postMessage(@RequestParam(name = "message", required = false) String message) {
-		return ResponseEntity.ok(message);
+	@Test
+	void contextLoads() {
 	}
+
 }

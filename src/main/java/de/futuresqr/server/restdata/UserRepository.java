@@ -21,16 +21,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server;
+package de.futuresqr.server.restdata;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import java.util.UUID;
 
-@SpringBootTest
-class FutureSqrServerApplicationTests {
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.rest.core.annotation.RepositoryRestResource;
+import org.springframework.data.rest.core.annotation.RestResource;
 
-	@Test
-	void contextLoads() {
-	}
+/**
+ * This is a demo approach for the application user repository of our FutureSQR
+ * application. This is currently not in use and a demo approach.
+ * 
+ * @author Robert Breunung
+ */
+@RepositoryRestResource(collectionResourceRel = "user", path = "user")
+public interface UserRepository extends JpaRepository<User, UUID> {
 
+	@RestResource(path = "nameContains")
+	public Page<User> findByDisplayNameContaining(@Param("displayName") String displayName, Pageable p);
+
+	@RestResource(path = "loginContains")
+	public Slice<User> findByLoginNameContaining(@Param("loginName") String loginName);
 }

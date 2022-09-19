@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server.model.user;
+package de.futuresqr.server.restdata;
 
 import static lombok.AccessLevel.PRIVATE;
 

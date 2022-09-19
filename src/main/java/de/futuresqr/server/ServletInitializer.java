@@ -21,19 +21,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.server.rest.login;
+package de.futuresqr.server;
 
-import lombok.Data;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 
 /**
- * Class represents a CSRF serialized answer.
+ * Basic servlet initializer as required by Tomcat.
  * 
  * @author Robert Breunung
  */
-@Data
-public class CsrfDto {
+public class ServletInitializer extends SpringBootServletInitializer {
 
-	private String parameterName;
-	private String token;
-	private String headerName;
+	@Override
+	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+		return application.sources(FutureSqrServerApplication.class);
+	}
+
 }
