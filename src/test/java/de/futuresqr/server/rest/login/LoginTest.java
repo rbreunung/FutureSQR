@@ -99,7 +99,7 @@ public class LoginTest {
 		log.trace("Header : {}", postResponse.getHeaders().toString());
 		log.trace("Body   : {}", postResponse.getBody());
 		assertTrue(postResponse.getStatusCode().is2xxSuccessful(), "Answer shall be successful (ok).");
-		assertTrue(postResponse.getBody().contains("\"user\" : [ ]"), "Answer shall return the JSON.");
+		assertTrue(postResponse.getBody().contains("\"user\" : ["), "Answer shall return the JSON.");
 	}
 
 	@Test

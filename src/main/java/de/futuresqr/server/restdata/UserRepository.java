@@ -34,8 +34,7 @@ import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.data.rest.core.annotation.RestResource;
 
 /**
- * This is a demo approach for the application user repository of our FutureSQR
- * application. This is currently not in use and a demo approach.
+ * This is the user database of FutureSQR.
  * 
  * @author Robert Breunung
  */
@@ -46,5 +45,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 	public Page<User> findByDisplayNameContaining(@Param("displayName") String displayName, Pageable p);
 
 	@RestResource(path = "loginContains")
+	public Slice<User> findByLoginName(@Param("loginName") String loginName);
+
+	/**
+	 * Proof of concept.
+	 * 
+	 * @param loginName
+	 * @return
+	 */
+	@RestResource(path = "login")
 	public Slice<User> findByLoginNameContaining(@Param("loginName") String loginName);
 }

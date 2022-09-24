@@ -21,42 +21,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server;
+package de.futuresqr.server.rest;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
-
-import de.futuresqr.server.data.FsqrUserDetailsManager;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.provisioning.UserDetailsManager;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Main configuration for Spring Security.
+ * This class implements basic use cases .
  * 
  * @author Robert Breunung
  */
-@Configuration
-public class SecurityConfiguration {
+@RestController
+@RequestMapping("/rest/user")
+public class UserManagementController {
 
-	@Bean
-	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+	@GetMapping("/")
+	void getAllUsers(UserDetailsManager userManagement) {
 
-		http.authorizeHttpRequests() // authorization section
-				// rest login area
-				.antMatchers("/rest/login/**").permitAll()
-				// user repository area
-				.antMatchers("/rest/**").authenticated()
-				// plain data repository area
-				.antMatchers("/restdata/**").hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
-		http.formLogin().defaultSuccessUrl("/");
-
-		return http.build();
 	}
 
-	@Bean
-	PasswordEncoder paswordEncoder() {
-		return new BCryptPasswordEncoder();
+	@PostMapping("/add")
+	ResponseEntity<String> postAddNewUser(@RequestParam("username") String username,
+			@RequestParam("password") String password, UserDetailsManager userManagement) {
+
+		return ResponseEntity.status(201).build();
 	}
+
 }

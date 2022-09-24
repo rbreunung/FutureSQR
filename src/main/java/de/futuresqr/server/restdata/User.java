@@ -26,6 +26,8 @@ package de.futuresqr.server.restdata;
 import static lombok.AccessLevel.PRIVATE;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -55,6 +57,8 @@ import lombok.NoArgsConstructor;
 		@UniqueConstraint(columnNames = "email") })
 public class User {
 
+	@Builder.Default
+	private List<String> grantedAuthorities = new ArrayList<>();
 	private boolean banned;
 	private Instant bannedDate;
 	@Builder.Default
