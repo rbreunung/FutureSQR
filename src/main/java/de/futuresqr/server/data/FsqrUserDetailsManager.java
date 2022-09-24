@@ -79,7 +79,7 @@ public class FsqrUserDetailsManager implements UserDetailsManager, GroupManager 
 		User dbUser = userSlice.iterator().next();
 		UserBuilder builder = org.springframework.security.core.userdetails.User.builder();
 		builder.username(dbUser.getLoginName()).password(dbUser.getPassword())
-				.authorities(dbUser.getGrantedAuthorities().toArray(i -> new String[i]));
+				.authorities((String[]) dbUser.getGrantedAuthorities().toArray(i -> new String[i]));
 		// TODO implement expired properties
 		return builder.build();
 	}
