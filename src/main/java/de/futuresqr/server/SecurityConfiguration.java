@@ -40,6 +40,10 @@ import de.futuresqr.server.data.FsqrUserDetailsManager;
 @Configuration
 public class SecurityConfiguration {
 
+	private static final String PATH_RESTDATA = "/restdata/**";
+	private static final String PATH_REST = "/rest/**";
+	public static final String PATH_REST_USER_AUTHENTICATE = "/rest/user/authenticate";
+
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
@@ -47,10 +51,10 @@ public class SecurityConfiguration {
 				// rest login area
 				.antMatchers("/rest/login/**").permitAll()
 				// user repository area
-				.antMatchers("/rest/**").authenticated()
+				.antMatchers(PATH_REST).authenticated()
 				// plain data repository area
-				.antMatchers("/restdata/**").hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
-		http.formLogin().defaultSuccessUrl("/");
+				.antMatchers(PATH_RESTDATA).hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
+		http.formLogin().loginProcessingUrl(PATH_REST_USER_AUTHENTICATE).defaultSuccessUrl("/");
 
 		return http.build();
 	}

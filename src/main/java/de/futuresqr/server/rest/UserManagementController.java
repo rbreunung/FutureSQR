@@ -23,13 +23,19 @@
  */
 package de.futuresqr.server.rest;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import de.futuresqr.server.data.FsqrUserDetailsManager;
 
 /**
  * This class implements basic use cases .
@@ -40,16 +46,26 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/user")
 public class UserManagementController {
 
+	@Autowired
+	private FsqrUserDetailsManager userManager;
+	@Autowired
+	private PasswordEncoder encoder;
+
 	@GetMapping("/")
 	void getAllUsers(UserDetailsManager userManagement) {
-
+		// TODO clarify architecture and which objects shall be shown
 	}
 
 	@PostMapping("/add")
 	ResponseEntity<String> postAddNewUser(@RequestParam("username") String username,
-			@RequestParam("password") String password, UserDetailsManager userManagement) {
+			@RequestParam("password") String password) {
 
-		return ResponseEntity.status(201).build();
+		UserDetails user = User.builder().username(username).password(encoder.encode(password))
+				.roles(FsqrUserDetailsManager.ROLE_USER).build();
+
+		userManager.createUser(user);
+
+		return ResponseEntity.status(204).build();
 	}
 
 }

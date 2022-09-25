@@ -51,7 +51,7 @@ import lombok.extern.slf4j.Slf4j;
 public class FsqrUserDetailsManager implements UserDetailsManager, GroupManager {
 
 	public static final String ROLE_ADMIN = "ADMIN";
-	private static final String ROLE_USER = "USER";
+	public static final String ROLE_USER = "USER";
 
 	@Autowired
 	private UserRepository userRepository;

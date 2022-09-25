@@ -23,6 +23,7 @@
  */
 package de.futuresqr.server.rest.login;
 
+import static de.futuresqr.server.SecurityConfiguration.PATH_REST_USER_AUTHENTICATE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.HttpHeaders.COOKIE;
@@ -288,7 +289,8 @@ public class LoginTest {
 	}
 
 	private String getLoginUri(CsrfDto csrfData) {
-		UriBuilder builder = new DefaultUriBuilderFactory("http://localhost:" + serverPort + "/login").builder();
+		UriBuilder builder = new DefaultUriBuilderFactory(
+				"http://localhost:" + serverPort + PATH_REST_USER_AUTHENTICATE).builder();
 		builder.queryParam("username", "user").queryParam("password", "password");
 		if (csrfData != null) {
 			builder.queryParam(csrfData.getParameterName(), csrfData.getToken());
