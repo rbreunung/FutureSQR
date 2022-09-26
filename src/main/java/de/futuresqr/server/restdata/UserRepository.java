@@ -33,19 +33,21 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.data.rest.core.annotation.RestResource;
 
+import de.futuresqr.server.model.backend.PersistenceUser;
+
 /**
  * This is the user database of FutureSQR.
  * 
  * @author Robert Breunung
  */
 @RepositoryRestResource(collectionResourceRel = "user", path = "user")
-public interface UserRepository extends JpaRepository<User, UUID> {
+public interface UserRepository extends JpaRepository<PersistenceUser, UUID> {
 
 	@RestResource(path = "nameContains")
-	public Page<User> findByDisplayNameContaining(@Param("displayName") String displayName, Pageable p);
+	public Page<PersistenceUser> findByDisplayNameContaining(@Param("displayName") String displayName, Pageable p);
 
 	@RestResource(path = "loginContains")
-	public Slice<User> findByLoginName(@Param("loginName") String loginName);
+	public Slice<PersistenceUser> findByLoginName(@Param("loginName") String loginName);
 
 	/**
 	 * Proof of concept.
@@ -54,5 +56,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 	 * @return
 	 */
 	@RestResource(path = "login")
-	public Slice<User> findByLoginNameContaining(@Param("loginName") String loginName);
+	public Slice<PersistenceUser> findByLoginNameContaining(@Param("loginName") String loginName);
 }

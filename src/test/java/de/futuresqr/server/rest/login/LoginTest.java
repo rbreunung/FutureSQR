@@ -150,7 +150,7 @@ public class LoginTest {
 
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
 
-		assertTrue(postResponse.getStatusCode().is3xxRedirection(), "User will be redirected to login success page.");
+		assertTrue(postResponse.getStatusCode().is2xxSuccessful(), "User will receive his user data object.");
 	}
 
 	@Test
@@ -163,7 +163,7 @@ public class LoginTest {
 
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
 
-		assertTrue(postResponse.getStatusCode().is3xxRedirection(), "User will be redirected to login success page.");
+		assertTrue(postResponse.getStatusCode().is2xxSuccessful(), "User will receive his user data object.");
 	}
 
 	@Test

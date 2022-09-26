@@ -21,14 +21,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.restdata;
+package de.futuresqr.server.model.backend;
 
 import static lombok.AccessLevel.PRIVATE;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.User.UserBuilder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.provisioning.UserDetailsManager;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -43,7 +51,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Data model for the user of the FutureSQR application.
+ * Data model for the user of the FutureSQR application and database.
  * 
  * @author Robert Breunung
  */
@@ -55,16 +63,17 @@ import lombok.NoArgsConstructor;
 //table name 'user' is reserved in databases
 @Table(name = "fsqrUser", uniqueConstraints = { @UniqueConstraint(columnNames = "loginName"),
 		@UniqueConstraint(columnNames = "email") })
-public class User {
+public class PersistenceUser {
 
-	@Builder.Default
-	private List<String> grantedAuthorities = new ArrayList<>();
+	private UUID avatarId;
 	private boolean banned;
 	private Instant bannedDate;
 	@Builder.Default
 	private Instant createdDate = Instant.now();
 	private String displayName;
 	private String email;
+	@Builder.Default
+	private Set<String> grantedAuthorities = new HashSet<>();
 	@Builder.Default
 	private Instant lastChangeDate = Instant.now();
 	@Column(name = "loginName")
@@ -73,4 +82,28 @@ public class User {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private UUID uuid;
+
+	public static PersistenceUser fromUserDetails(UserDetails userDetails) {
+		PersistenceUserBuilder userBuilder = builder().loginName(userDetails.getUsername())
+				.password(userDetails.getPassword()).banned(!userDetails.isAccountNonLocked());
+		Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
+		if (authorities != null) {
+			Set<String> newAuthorities = authorities.stream().map(GrantedAuthority::getAuthority)
+					.collect(Collectors.toSet());
+			userBuilder.grantedAuthorities(newAuthorities);
+		}
+		return userBuilder.build();
+	}
+
+	/**
+	 * Create an object used by the {@link UserDetailsManager}.
+	 */
+	public static UserDetails toUserDetails(PersistenceUser sourceUser) {
+		UserBuilder userBuilder = User.builder();
+
+		userBuilder.accountLocked(sourceUser.banned).password(sourceUser.password).username(sourceUser.loginName)
+				.authorities(sourceUser.getGrantedAuthorities().toArray(i -> new String[i]));
+
+		return userBuilder.build();
+	}
 }

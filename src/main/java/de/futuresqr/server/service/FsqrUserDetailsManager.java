@@ -21,23 +21,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.data;
+package de.futuresqr.server.service;
 
-import java.util.List;
+import static de.futuresqr.server.model.backend.PersistenceUser.toUserDetails;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Slice;
 import org.springframework.lang.NonNull;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.User.UserBuilder;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.GroupManager;
 import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
-import de.futuresqr.server.restdata.User;
+import de.futuresqr.server.model.backend.PersistenceUser;
 import de.futuresqr.server.restdata.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,7 +48,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Service
 @Slf4j
-public class FsqrUserDetailsManager implements UserDetailsManager, GroupManager {
+public class FsqrUserDetailsManager implements UserDetailsManager {
 
 	public static final String ROLE_ADMIN = "ADMIN";
 	public static final String ROLE_USER = "USER";
@@ -60,120 +60,61 @@ public class FsqrUserDetailsManager implements UserDetailsManager, GroupManager 
 	private void setPasswordEncoder(PasswordEncoder encoder) {
 		if (userRepository.count() == 0) {
 			log.info("Empty user repository. Set default users.");
-			UserDetails user = org.springframework.security.core.userdetails.User.builder().username("user")
-					.password(encoder.encode("password")).roles(ROLE_USER).build();
+			UserDetails user = User.builder().username("user").password(encoder.encode("password")).roles(ROLE_USER)
+					.build();
 			createUser(user);
-			user = org.springframework.security.core.userdetails.User.builder().username("admin")
-					.password(encoder.encode("admin")).roles(ROLE_ADMIN, ROLE_USER).build();
+			user = User.builder().username("admin").password(encoder.encode("admin")).roles(ROLE_ADMIN, ROLE_USER)
+					.build();
 			createUser(user);
 		}
 	}
 
 	@Override
 	public UserDetails loadUserByUsername(@NonNull String username) throws UsernameNotFoundException {
-		Slice<User> userSlice = userRepository.findByLoginName(username);
+		Slice<PersistenceUser> userSlice = userRepository.findByLoginName(username);
 		if (userSlice.isEmpty()) {
 			throw new UsernameNotFoundException(String.format("\"%s\" not found.", username));
 		}
 
-		User dbUser = userSlice.iterator().next();
-		UserBuilder builder = org.springframework.security.core.userdetails.User.builder();
-		builder.username(dbUser.getLoginName()).password(dbUser.getPassword())
-				.authorities((String[]) dbUser.getGrantedAuthorities().toArray(i -> new String[i]));
-		// TODO implement expired properties
-		return builder.build();
-	}
+		PersistenceUser dbUser = userSlice.iterator().next();
 
-	@Override
-	public List<String> findAllGroups() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public List<String> findUsersInGroup(String groupName) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void createGroup(String groupName, List<GrantedAuthority> authorities) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void deleteGroup(String groupName) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void renameGroup(String oldName, String newName) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void addUserToGroup(String username, String group) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void removeUserFromGroup(String username, String groupName) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public List<GrantedAuthority> findGroupAuthorities(String groupName) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void addGroupAuthority(String groupName, GrantedAuthority authority) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void removeGroupAuthority(String groupName, GrantedAuthority authority) {
-		// TODO Auto-generated method stub
-
+		return toUserDetails(dbUser);
 	}
 
 	@Override
 	public void createUser(UserDetails user) {
-		User dbUser = User.builder().loginName(user.getUsername()).password(user.getPassword())
-				.grantedAuthorities(user.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList())
-				.build();
+		PersistenceUser dbUser = PersistenceUser.fromUserDetails(user);
 		userRepository.save(dbUser);
 	}
 
 	@Override
 	public void updateUser(UserDetails user) {
-		// TODO Auto-generated method stub
-
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public void deleteUser(String username) {
-		// TODO Auto-generated method stub
-
+		throw new UnsupportedOperationException("User shall not be deleted by intention for traceability purpose.");
 	}
 
 	@Override
 	public void changePassword(String oldPassword, String newPassword) {
-		// TODO Auto-generated method stub
+		String username = SecurityContextHolder.getContext().getAuthentication().getName();
+		Slice<PersistenceUser> slice = userRepository.findByLoginName(username);
 
+		Assert.isTrue(slice.hasContent(), "User not in database: " + username);
+		PersistenceUser user = slice.iterator().next();
+		Assert.isTrue(user.getPassword().equals(oldPassword), "Old password does not match");
+
+		user.setPassword(newPassword);
+		userRepository.save(user);
 	}
 
 	@Override
 	public boolean userExists(String username) {
-		// TODO Auto-generated method stub
-		return false;
+
+		Slice<PersistenceUser> userSlice = userRepository.findByLoginName(username);
+		return userSlice.hasContent();
 	}
 
 }

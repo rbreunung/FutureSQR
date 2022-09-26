@@ -25,12 +25,16 @@ package de.futuresqr.server;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
-import de.futuresqr.server.data.FsqrUserDetailsManager;
+import de.futuresqr.server.rest.LoginHandler;
+import de.futuresqr.server.restdata.UserRepository;
+import de.futuresqr.server.service.FsqrUserDetailsManager;
 
 /**
  * Main configuration for Spring Security.
@@ -54,9 +58,15 @@ public class SecurityConfiguration {
 				.antMatchers(PATH_REST).authenticated()
 				// plain data repository area
 				.antMatchers(PATH_RESTDATA).hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
-		http.formLogin().loginProcessingUrl(PATH_REST_USER_AUTHENTICATE).defaultSuccessUrl("/");
+		http.formLogin().loginProcessingUrl(PATH_REST_USER_AUTHENTICATE)
+				.successHandler(authenticationSuccessHandler(null));
 
 		return http.build();
+	}
+
+	@Bean
+	AuthenticationSuccessHandler authenticationSuccessHandler(@NonNull UserRepository userRepository) {
+		return new LoginHandler(userRepository);
 	}
 
 	@Bean

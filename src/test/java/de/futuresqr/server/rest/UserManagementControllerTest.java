@@ -23,7 +23,11 @@
  */
 package de.futuresqr.server.rest;
 
+import static org.mockito.AdditionalAnswers.returnsFirstArg;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -31,8 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.net.URI;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -43,8 +47,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import de.futuresqr.server.data.FsqrUserDetailsManager;
-import lombok.extern.slf4j.Slf4j;
+import de.futuresqr.server.restdata.UserRepository;
 
 /**
  * Unit tests for {@link UserManagementController}.
@@ -67,7 +70,12 @@ public class UserManagementControllerTest {
 	private MockMvc mvc;
 
 	@MockBean
-	private FsqrUserDetailsManager userManager;
+	private UserRepository userRepository;
+
+	@BeforeEach
+	public void setup() {
+		when(userRepository.save(any())).then(returnsFirstArg());
+	}
 
 	@Test
 	@WithMockUser(username = "admin", password = "admin", roles = "ADMIN")
@@ -76,7 +84,7 @@ public class UserManagementControllerTest {
 		mvc.perform(post(URI.create("/rest/user/add")).param("username", "alter").param("password", "newPassword")
 				.with(csrf())).andDo(print())
 				// assert
-				.andExpect(status().is(204));
+				.andExpect(status().isOk());
 	}
 
 	@Test
@@ -86,6 +94,6 @@ public class UserManagementControllerTest {
 		mvc.perform(post(URI.create("/rest/user/add")).param("username", "alter").param("password", "newPassword")
 				.with(csrf()));
 
-		verify(userManager).createUser(Mockito.notNull());
+		verify(userRepository).save(notNull());
 	}
 }
