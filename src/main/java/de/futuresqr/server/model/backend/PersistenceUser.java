@@ -102,7 +102,7 @@ public class PersistenceUser {
 		UserBuilder userBuilder = User.builder();
 
 		userBuilder.accountLocked(sourceUser.banned).password(sourceUser.password).username(sourceUser.loginName)
-				.authorities(sourceUser.getGrantedAuthorities().toArray(i -> new String[i]));
+				.authorities(sourceUser.getGrantedAuthorities().toArray((int i) -> new String[i]));
 
 		return userBuilder.build();
 	}
