@@ -23,10 +23,14 @@
  */
 package de.futuresqr.server.rest;
 
+import static java.util.stream.Collectors.toMap;
+
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Slice;
@@ -63,10 +67,17 @@ public class UserManagementController {
 	private UserRepository userRepo;
 
 	@GetMapping({ "/simplelist" })
-	ResponseEntity<List<SimpleUserDto>> getAllUsers() {
+	Map<UUID, SimpleUserDto> getSimpleUserList() {
 		List<PersistenceUser> page = userRepo.findAll();
-		List<SimpleUserDto> returnPage = page.stream().map(SimpleUserDto::fromPersistenceUser).toList();
-		return ResponseEntity.ok(returnPage);
+		Map<UUID, SimpleUserDto> returnPage = page.stream()
+				.collect(toMap(PersistenceUser::getUuid, SimpleUserDto::fromPersistenceUser));
+		return returnPage;
+	}
+
+	@GetMapping("/adminuserlist")
+	List<FrontendUser> getAdminUserList() {
+		List<PersistenceUser> page = userRepo.findAll();
+		return page.stream().map(FrontendUser::fromPersistenceUser).toList();
 	}
 
 	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
