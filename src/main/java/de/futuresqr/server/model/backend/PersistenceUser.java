@@ -26,8 +26,10 @@ package de.futuresqr.server.model.backend;
 import static lombok.AccessLevel.PRIVATE;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -39,6 +41,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.provisioning.UserDetailsManager;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -82,6 +85,9 @@ public class PersistenceUser {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private UUID uuid;
+	@ElementCollection
+	@Builder.Default
+	private List<String> vcsNames = new ArrayList<>();
 
 	public static PersistenceUser fromUserDetails(UserDetails userDetails) {
 		PersistenceUserBuilder userBuilder = builder().loginName(userDetails.getUsername())

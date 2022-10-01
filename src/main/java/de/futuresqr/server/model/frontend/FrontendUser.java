@@ -37,7 +37,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * This class is represents the contract between backend and frontend how to
- * represent a user.
+ * represent a user in the administration area.
  * 
  * @author Robert Breunung
  */
@@ -53,19 +53,20 @@ public class FrontendUser {
 	private UUID uuid;
 	private String loginname;
 	private String displayname;
+	private String[] vcsNames;
 	private String avatarlocation;
-	private String email;
+	private String contactemail;
 	private boolean isbanned;
 
 	public static FrontendUser fromPersistenceUser(PersistenceUser user) {
 		return builder().uuid(user.getUuid()).loginname(user.getLoginName()).displayname(user.getDisplayName())
 				.avatarlocation(user.getAvatarId() == null ? null : user.getAvatarId().toString())
-				.email(user.getEmail()).isbanned(user.isBanned()).build();
+				.contactemail(user.getEmail()).isbanned(user.isBanned()).build();
 	}
 
 	public PersistenceUser toPersistenceUser() {
 		PersistenceUserBuilder userBuilder = PersistenceUser.builder().uuid(uuid).loginName(loginname)
-				.displayName(displayname).avatarId(null).email(email).banned(isbanned);
+				.displayName(displayname).avatarId(null).email(contactemail).banned(isbanned);
 		Matcher matcher = uuidPattern.matcher(avatarlocation);
 		if (matcher.find()) {
 			userBuilder.avatarId(UUID.fromString(matcher.group()));

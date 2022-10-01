@@ -42,6 +42,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
+ * This handler customizes the answer to the successful authenticated user.
+ * 
  * @author Robert Breunung
  */
 public class LoginHandler implements AuthenticationSuccessHandler {

@@ -23,32 +23,33 @@
  */
 package de.futuresqr.server.rest;
 
-import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
-
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
+import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import de.futuresqr.server.model.backend.PersistenceUser;
+import de.futuresqr.server.model.backend.PersistenceUser.PersistenceUserBuilder;
 import de.futuresqr.server.model.frontend.FrontendUser;
+import de.futuresqr.server.model.frontend.SimpleUserDto;
 import de.futuresqr.server.restdata.UserRepository;
 import de.futuresqr.server.service.FsqrUserDetailsManager;
+import jakarta.annotation.security.RolesAllowed;
 
 /**
- * This class implements basic use cases .
+ * This class implements basic use cases.
  * 
  * @author Robert Breunung
  */
@@ -61,77 +62,85 @@ public class UserManagementController {
 	@Autowired
 	private UserRepository userRepo;
 
-	@GetMapping({ "/", "/simplelist" })
-	ResponseEntity<Page<FrontendUser>> getAllUsers() {
-		Page<PersistenceUser> page = userRepo.findAll(PageRequest.of(0, 20));
-		Page<FrontendUser> returnPage = page.map(FrontendUser::fromPersistenceUser);
+	@GetMapping({ "/simplelist" })
+	ResponseEntity<List<SimpleUserDto>> getAllUsers() {
+		List<PersistenceUser> page = userRepo.findAll();
+		List<SimpleUserDto> returnPage = page.stream().map(SimpleUserDto::fromPersistenceUser).toList();
 		return ResponseEntity.ok(returnPage);
 	}
 
-	@PostMapping("/{command}")
-	ResponseEntity<FrontendUser> postAddNewUser(@PathVariable(name = "command") String command,
-			@RequestParam("username") String username,
-			@RequestParam(name = "password", required = false) String password,
-			@RequestParam(name = "contactemail", required = false) String email,
-			@RequestParam(name = "displayname", required = false) String displayName) {
+	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
+	@PostMapping("/add")
+	ResponseEntity<FrontendUser> postAddNewUser(@RequestParam("username") String username,
+			@RequestParam(name = "password") String password, @RequestParam(name = "contactemail") String email,
+			@RequestParam(name = "displayname") String displayName) {
 
-		switch (command) {
-		case "add": {
-			Assert.hasLength(password, "Password requires content.");
+		Assert.hasLength(password, "Password requires content.");
 
-			HashSet<String> roles = new HashSet<>();
-			roles.add("ROLE_" + FsqrUserDetailsManager.ROLE_USER);
+		HashSet<String> roles = new HashSet<>();
+		roles.add("ROLE_" + FsqrUserDetailsManager.ROLE_USER);
 
-			PersistenceUser persistenceUser = PersistenceUser.builder().loginName(username)
-					.password(encoder.encode(password)).grantedAuthorities(roles).email(email).displayName(displayName)
-					.build();
-			persistenceUser = userRepo.save(persistenceUser);
+		PersistenceUserBuilder userBuilder = PersistenceUser.builder().loginName(username)
+				.password(encoder.encode(password)).grantedAuthorities(roles).email(email).displayName(displayName);
+		PersistenceUser persistenceUser = userBuilder.build();
+		persistenceUser = userRepo.save(persistenceUser);
 
-			return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
-		}
-		case "ban": {
-			Slice<PersistenceUser> slice = userRepo.findByLoginName(username);
-			if (slice.isEmpty()) {
-				return ResponseEntity.notFound().build();
-			}
-			PersistenceUser persistenceUser = setBanned(true, slice);
-			return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
-		}
-		case "unban": {
-			Slice<PersistenceUser> slice = userRepo.findByLoginName(username);
-			if (slice.isEmpty()) {
-				return ResponseEntity.notFound().build();
-			}
-			PersistenceUser persistenceUser = setBanned(false, slice);
-			return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
-		}
-		case "updatecontact":
-		case "updateprofile":
-		case "updatedisplayname": {
-			Slice<PersistenceUser> slice = userRepo.findByLoginName(username);
-			if (slice.isEmpty()) {
-				return ResponseEntity.notFound().build();
-			}
-			// FIXME this may override existing parameters without intention
-			PersistenceUser persistenceUser = slice.iterator().next();
-			persistenceUser.setDisplayName(displayName);
-			persistenceUser.setEmail(email);
-			persistenceUser = userRepo.save(persistenceUser);
-			return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
-		}
-		default:
-			return ResponseEntity.status(NOT_IMPLEMENTED).build();
-		}
+		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
 	}
 
-	private PersistenceUser setBanned(boolean newBanned, Slice<PersistenceUser> slice) {
-		PersistenceUser persistenceUser = slice.iterator().next();
-		persistenceUser.setBanned(newBanned);
+	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
+	@PostMapping({ "/ban", "/unban" })
+	ResponseEntity<FrontendUser> postBanUnbanUser(@RequestParam("username") String username,
+			RequestEntity<String> request) {
+
+		PersistenceUser persistenceUser = getUser(username);
+		if (persistenceUser == null) {
+			return ResponseEntity.notFound().build();
+		}
+		persistenceUser = setBanned(request.getUrl().getPath().contains("/ban"), persistenceUser);
+		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
+	}
+
+	@PostMapping({ "/updatecontact" })
+	ResponseEntity<FrontendUser> postUpdateContact(@RequestParam("username") String username,
+			@RequestParam(name = "contactemail") String email) {
+
+		PersistenceUser persistenceUser = getUser(username);
+		if (persistenceUser == null) {
+			return ResponseEntity.notFound().build();
+		}
+		persistenceUser.setEmail(email);
+		PersistenceUser updatedPersistenceUser = userRepo.save(persistenceUser);
+		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(updatedPersistenceUser));
+	}
+
+	@PostMapping({ "/updatedisplayname", "/updateprofile" })
+	ResponseEntity<FrontendUser> postUpdateProfile(@RequestParam("username") String username,
+			@RequestParam(name = "displayname", required = false) Optional<String> displayName) {
+
+		final PersistenceUser persistenceUser = getUser(username);
+		if (persistenceUser == null) {
+			return ResponseEntity.notFound().build();
+		}
+		displayName.ifPresent(persistenceUser::setDisplayName);
+		PersistenceUser updatedPersistenceUser = userRepo.save(persistenceUser);
+		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(updatedPersistenceUser));
+	}
+
+	private PersistenceUser getUser(String username) {
+		Slice<PersistenceUser> slice = userRepo.findByLoginName(username);
+		return slice.isEmpty() ? null : slice.iterator().next();
+	}
+
+	/**
+	 * Update ban state and store to persistence.
+	 */
+	private PersistenceUser setBanned(boolean newBanned, PersistenceUser user) {
+		user.setBanned(newBanned);
 		Instant bannedDate = Instant.now();
-		persistenceUser.setBannedDate(bannedDate);
-		persistenceUser.setLastChangeDate(bannedDate);
-		persistenceUser = userRepo.save(persistenceUser);
-		return persistenceUser;
+		user.setBannedDate(bannedDate);
+		user.setLastChangeDate(bannedDate);
+		return userRepo.save(user);
 	}
 
 }
