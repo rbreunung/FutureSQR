@@ -31,6 +31,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import de.futuresqr.server.rest.LoginHandler;
 import de.futuresqr.server.restdata.UserRepository;
@@ -62,7 +63,7 @@ public class SecurityConfiguration {
 				.antMatchers(PATH_RESTDATA).hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
 		http.formLogin().loginProcessingUrl(PATH_REST_USER_AUTHENTICATE)
 				.successHandler(authenticationSuccessHandler(null));
-
+		http.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse());
 		return http.build();
 	}
 
