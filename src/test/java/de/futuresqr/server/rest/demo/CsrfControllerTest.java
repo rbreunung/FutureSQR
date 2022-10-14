@@ -1,4 +1,4 @@
-package de.futuresqr.server.rest.login;
+package de.futuresqr.server.rest.demo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

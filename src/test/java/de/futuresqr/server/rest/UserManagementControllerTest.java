@@ -56,6 +56,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import de.futuresqr.server.model.backend.PersistenceUser;
+import de.futuresqr.server.rest.user.UserManagementController;
 import de.futuresqr.server.restdata.UserRepository;
 
 /**

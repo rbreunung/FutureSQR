@@ -33,7 +33,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
-import de.futuresqr.server.rest.LoginHandler;
+import de.futuresqr.server.rest.user.LoginHandler;
 import de.futuresqr.server.restdata.UserRepository;
 import de.futuresqr.server.service.FsqrUserDetailsManager;
 

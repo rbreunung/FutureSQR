@@ -21,23 +21,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.rest;
+package de.futuresqr.server.rest.demo;
 
-import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * This controller provides on request the CSRF token belonging to the current
- * session.
- * 
+ * Proof of concept service for Angular user management demo. This is no part of
+ * the final product and may be removed without further notice.
+ *
  * @author Robert Breunung
  */
 @RestController
-public class CsrfController {
+public class SayHello {
 
-	@GetMapping("/rest/login/csrf")
-	public CsrfToken csrf(CsrfToken token) {
-		return token;
+	Logger logger = LoggerFactory.getLogger(getClass());
+
+	@RequestMapping("/rest/say-hello")
+	public String postSayHello(@RequestParam(name = "name", required = false) String name) {
+
+		logger.info("Received name {}", name);
+
+		if (name != null && !name.isBlank())
+			return name;
+
+		return "No Name";
 	}
 }

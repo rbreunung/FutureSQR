@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.rest;
+package de.futuresqr.server.rest.user;
 
 import static java.util.stream.Collectors.toMap;
 

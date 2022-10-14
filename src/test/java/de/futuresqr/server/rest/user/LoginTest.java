@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.rest.login;
+package de.futuresqr.server.rest.user;
 
 import static de.futuresqr.server.SecurityConfiguration.PATH_REST_USER_AUTHENTICATE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,6 +47,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilder;
 
+import de.futuresqr.server.rest.demo.CsrfDto;
 import lombok.extern.slf4j.Slf4j;
 
 /**
