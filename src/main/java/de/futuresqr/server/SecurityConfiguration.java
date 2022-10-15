@@ -63,6 +63,7 @@ public class SecurityConfiguration {
 				.antMatchers(PATH_RESTDATA).hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
 		http.formLogin().loginProcessingUrl(PATH_REST_USER_AUTHENTICATE)
 				.successHandler(authenticationSuccessHandler(null));
+		http.logout().logoutUrl("/rest/user/logout");
 		http.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse());
 		return http.build();
 	}
