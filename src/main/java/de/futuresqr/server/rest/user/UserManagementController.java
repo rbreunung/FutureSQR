@@ -23,14 +23,10 @@
  */
 package de.futuresqr.server.rest.user;
 
-import static java.util.stream.Collectors.toMap;
-
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Slice;
@@ -67,11 +63,9 @@ public class UserManagementController {
 	private UserRepository userRepo;
 
 	@GetMapping({ "/simplelist" })
-	Map<UUID, SimpleUserDto> getSimpleUserList() {
+	List<SimpleUserDto> getSimpleUserList() {
 		List<PersistenceUser> page = userRepo.findAll();
-		Map<UUID, SimpleUserDto> returnPage = page.stream()
-				.collect(toMap(PersistenceUser::getUuid, SimpleUserDto::fromPersistenceUser));
-		return returnPage;
+		return page.stream().map(SimpleUserDto::fromPersistenceUser).toList();
 	}
 
 	@GetMapping("/adminuserlist")
