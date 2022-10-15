@@ -26,12 +26,12 @@ package de.futuresqr.server.rest.demo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.HttpHeaders.COOKIE;
+import static org.springframework.http.HttpHeaders.SET_COOKIE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
 
 import java.util.List;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -127,8 +127,7 @@ public class LoginControllerTest {
 	}
 
 	@Test
-	@Disabled("need to catch CSRF and session cookie from login in order to fix this")
-	public void postTest_Authenticated_success() {
+	public void postTest_authenticated_success() {
 
 		final String getCsfrUri = "http://localhost:" + serverPort + "/rest/login/csrf";
 		ResponseEntity<CsrfDto> csrfEntity = webclient.getForEntity(getCsfrUri, CsrfDto.class);
@@ -137,18 +136,20 @@ public class LoginControllerTest {
 		String loginUri = getLoginUri(null);
 		HttpHeaders header = getHeader(csrfData, sessionId);
 		ResponseEntity<String> loginPost = webclient.postForEntity(loginUri, new HttpEntity<>(header), String.class);
-
+		header = getSessionHeader(csrfData, loginPost);
 		ResponseEntity<String> response = webclient.exchange(getPostTestMessageUri(null, MESSAGE), POST,
 				new HttpEntity<>(header), String.class);
 
 		assertTrue(response.getBody().equals(MESSAGE), "Controller shall respond with same message.");
 	}
 
-	private HttpHeaders getHeader(CsrfDto csrfData, String sessionId) {
+	private HttpHeaders getHeader(CsrfDto csrfData, String... cookies) {
 		HttpHeaders header = new HttpHeaders();
 		header.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE);
-		if (sessionId != null) {
-			header.add(COOKIE, sessionId);
+		for (String cookie : cookies) {
+			if (cookie != null) {
+				header.add(COOKIE, cookie);
+			}
 		}
 		if (csrfData != null) {
 			header.add(csrfData.getHeaderName(), csrfData.getToken());
@@ -157,7 +158,8 @@ public class LoginControllerTest {
 	}
 
 	private String getLoginUri(CsrfDto csrfData) {
-		UriBuilder builder = new DefaultUriBuilderFactory("http://localhost:" + serverPort + "/rest/user/authenticate").builder();
+		UriBuilder builder = new DefaultUriBuilderFactory("http://localhost:" + serverPort + "/rest/user/authenticate")
+				.builder();
 		builder.queryParam("username", "user").queryParam("password", "password");
 		if (csrfData != null) {
 			builder.queryParam(csrfData.getParameterName(), csrfData.getToken());
@@ -185,5 +187,23 @@ public class LoginControllerTest {
 			builder.queryParam("message", message);
 		}
 		return builder.build().toString();
+	}
+
+	private HttpHeaders getSessionHeader(CsrfDto csrfData, ResponseEntity<String> loginResponse) {
+		List<String> newCookies = loginResponse.getHeaders().get(SET_COOKIE);
+		String sessionCookie = null, csrfCookie = null;
+		for (String newCookie : newCookies) {
+			String[] cookieSplit = newCookie.split(";");
+			String[] cookieBody = cookieSplit[0].split("=");
+			if (cookieSplit[0].startsWith("JS")) {
+				sessionCookie = newCookie;
+			} else if (cookieBody.length == 2 && cookieBody[1] != null && !cookieBody[1].isBlank()) {
+				csrfData.setToken(cookieBody[1]);
+				csrfCookie = newCookie;
+			} else {
+				log.info("skip cookie remove: {}", newCookie);
+			}
+		}
+		return getHeader(csrfData, sessionCookie, csrfCookie);
 	}
 }
