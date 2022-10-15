@@ -27,6 +27,8 @@ import static de.futuresqr.server.SecurityConfiguration.PATH_REST_USER_AUTHENTIC
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.HttpHeaders.COOKIE;
+import static org.springframework.http.HttpHeaders.SET_COOKIE;
+import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 
 import java.util.List;
@@ -70,16 +72,16 @@ public class LoginTest {
 	public void getLoginTest_validRequestWithAuthentication_messageReplied() {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfData = csrfEntity.getBody();
-		String sessionId = getNewSetCookieContent(csrfEntity);
+		String sessionId = getFirstNewCookieContent(csrfEntity);
 		String uri = getLoginUri(csrfData);
 		HttpHeaders header = getHeader(null, sessionId);
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
-		sessionId = getNewSetCookieContent(postResponse);
+		sessionId = postResponse.getHeaders().get(SET_COOKIE).stream().filter(s -> s.startsWith("J")).findAny().get();
 		final String randomMessage = UUID.randomUUID().toString();
 		uri = getPostTestMessageUri(null, randomMessage);
 		header = getJsonHeader(null, sessionId);
 
-		postResponse = webclient.exchange(uri, HttpMethod.GET, new HttpEntity<>(header), String.class);
+		postResponse = webclient.exchange(uri, GET, new HttpEntity<>(header), String.class);
 
 		log.trace("Header : {}", postResponse.getHeaders().toString());
 		log.trace("Body   : {}", postResponse.getBody());
@@ -91,9 +93,9 @@ public class LoginTest {
 	@Test
 	public void getUser_validRequestWithAuthentication_statusOk() {
 
-		String sessionId = getLoginSessionId();
+		HttpHeaders loginSessionHeader = getLoginSessionHeader();
 		String uri = "http://localhost:" + serverPort + "/rest/user";
-		RequestEntity<Void> requestEntity = RequestEntity.get(uri).header(COOKIE, sessionId).accept(APPLICATION_JSON)
+		RequestEntity<Void> requestEntity = RequestEntity.get(uri).headers(loginSessionHeader).accept(APPLICATION_JSON)
 				.build();
 
 		ResponseEntity<String> postResponse = webclient.exchange(requestEntity, String.class);
@@ -107,7 +109,7 @@ public class LoginTest {
 	@Test
 	public void postLogin_missingCsrf_statusForbidden() {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
-		String sessionId = getNewSetCookieContent(csrfEntity);
+		String sessionId = getFirstNewCookieContent(csrfEntity);
 		String uri = getLoginUri(null);
 		HttpHeaders header = getHeader(null, sessionId);
 
@@ -122,7 +124,7 @@ public class LoginTest {
 
 		String uri = getLoginUri(null);
 
-		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(getHeader(null, null)),
+		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(getHeader(null)),
 				String.class);
 
 		assertEquals(403, postResponse.getStatusCode().value(),
@@ -134,7 +136,7 @@ public class LoginTest {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfData = csrfEntity.getBody();
 		String uri = getLoginUri(csrfData);
-		HttpHeaders header = getHeader(csrfData, null);
+		HttpHeaders header = getHeader(csrfData);
 
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
 
@@ -145,7 +147,7 @@ public class LoginTest {
 	public void postLogin_validRequestFormCsrfToken_authenticationRedirection() {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfData = csrfEntity.getBody();
-		String sessionId = getNewSetCookieContent(csrfEntity);
+		String sessionId = getFirstNewCookieContent(csrfEntity);
 		String uri = getLoginUri(csrfData);
 		HttpHeaders header = getHeader(null, sessionId);
 
@@ -158,7 +160,7 @@ public class LoginTest {
 	public void postLogin_validRequestHeaderCsrfToken_authenticationRedirection() {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfData = csrfEntity.getBody();
-		String sessionId = getNewSetCookieContent(csrfEntity);
+		String sessionId = getFirstNewCookieContent(csrfEntity);
 		String uri = getLoginUri(null);
 		HttpHeaders header = getHeader(csrfData, sessionId);
 
@@ -172,7 +174,7 @@ public class LoginTest {
 
 		final String randomMessage = UUID.randomUUID().toString();
 		String postMessageUri = getPostTestMessageUri(null, randomMessage);
-		HttpHeaders sessionHeader = getHeader(null, null);
+		HttpHeaders sessionHeader = getHeader(null);
 
 		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
 				new HttpEntity<>(sessionHeader), String.class);
@@ -183,14 +185,13 @@ public class LoginTest {
 	@Test
 	public void postLoginTest_validRequestWithAuthentication_messageReplied() {
 
-		String loginSessionId = getLoginSessionId();
-		CsrfDto loginCsrf = getLoginCsrfToken(loginSessionId).getBody();
+		HttpHeaders loginSessionHeader = getLoginSessionHeader();
+		CsrfDto loginCsrf = getLoginCsrfToken(loginSessionHeader).getBody();
 		final String randomMessage = UUID.randomUUID().toString();
 		String postMessageUri = getPostTestMessageUri(loginCsrf, randomMessage);
-		HttpHeaders sessionHeader = getHeader(null, loginSessionId);
 
 		ResponseEntity<String> messageResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
-				new HttpEntity<>(sessionHeader), String.class);
+				new HttpEntity<>(loginSessionHeader), String.class);
 
 		assertTrue(messageResponse.getStatusCode().is2xxSuccessful(), "Answer shall be successful (ok).");
 		assertEquals(randomMessage, messageResponse.getBody(), "Answer shall return the message.");
@@ -198,46 +199,85 @@ public class LoginTest {
 
 	@Test
 	public void postLoginTest_validRequestWithAuthenticationWithoutCsrf_statusForbidden() {
-		String loginSessionId = getLoginSessionId();
+		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
+		CsrfDto csrfDto = csrfEntity.getBody();
+		String firstSessionId = getFirstNewCookieContent(csrfEntity);
+		String loginUri = getLoginUri(csrfEntity.getBody());
+		HttpHeaders header = getHeader(null, firstSessionId);
 
+		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
+				String.class);
+		HttpHeaders sessionHeader = getSessionHeader(csrfDto, postLoginResponse, true, true, false);
 		final String randomMessage = UUID.randomUUID().toString();
 		String postMessageUri = getPostTestMessageUri(null, randomMessage);
-		HttpHeaders sessionHeader = getHeader(null, loginSessionId);
 
 		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
 				new HttpEntity<>(sessionHeader), String.class);
 
-		assertEquals(403, postResponse.getStatusCode().value(), "User without cookie and CSRF token expected.");
+		assertEquals(403, postResponse.getStatusCode().value(), "User without session cookie cannot post expected.");
 	}
 
 	@Test
-	public void postLoginTest_validRequestWithAuthenticationWithoutNewCookie_statusForbidden() {
+	public void postLoginTest_validRequestWithAuthenticationWithoutNewCsrfCookie_statusForbidden() {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
-		String firstSessionId = getNewSetCookieContent(csrfEntity);
+		CsrfDto csrfDto = csrfEntity.getBody();
+		String firstSessionId = getFirstNewCookieContent(csrfEntity);
 		String loginUri = getLoginUri(csrfEntity.getBody());
 		HttpHeaders header = getHeader(null, firstSessionId);
-		String loginSessionId = getNewSetCookieContent(
-				webclient.postForEntity(loginUri, new HttpEntity<>(header), String.class));
-		CsrfDto loginCsrfToken = getLoginCsrfToken(loginSessionId).getBody();
+
+		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
+				String.class);
+		HttpHeaders sessionHeader = getSessionHeader(csrfDto, postLoginResponse, true, false, true);
 		final String randomMessage = UUID.randomUUID().toString();
-		String postMessageUri = getPostTestMessageUri(loginCsrfToken, randomMessage);
-		HttpHeaders sessionHeader = getHeader(loginCsrfToken, firstSessionId);
+		String postMessageUri = getPostTestMessageUri(csrfDto, randomMessage);
 
 		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
 				new HttpEntity<>(sessionHeader), String.class);
 
-		assertEquals(403, postResponse.getStatusCode().value(), "User without cookie and CSRF token expected.");
+		assertEquals(403, postResponse.getStatusCode().value(), "User without CSRF cookie cannot post expected.");
+	}
+
+	@Test
+	public void postLoginTest_validRequestWithAuthenticationWithoutNewSessionCookie_statusForbidden() {
+		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
+		CsrfDto csrfDto = csrfEntity.getBody();
+		String firstSessionId = getFirstNewCookieContent(csrfEntity);
+		String loginUri = getLoginUri(csrfEntity.getBody());
+		HttpHeaders header = getHeader(null, firstSessionId);
+
+		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
+				String.class);
+		HttpHeaders sessionHeader = getSessionHeader(csrfDto, postLoginResponse, false, true, true);
+		final String randomMessage = UUID.randomUUID().toString();
+		String postMessageUri = getPostTestMessageUri(csrfDto, randomMessage);
+
+		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
+				new HttpEntity<>(sessionHeader), String.class);
+
+		assertEquals(302, postResponse.getStatusCode().value(), "User without session cookie cannot post expected.");
 	}
 
 	private ResponseEntity<CsrfDto> getCsfrEntity() {
 		return webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf", CsrfDto.class);
 	}
 
-	private HttpHeaders getHeader(CsrfDto csrfData, String sessionId) {
+	/**
+	 * Get the cookie set by the server response.
+	 */
+	private String getFirstNewCookieContent(ResponseEntity<?> entity) {
+		List<String> list = entity.getHeaders().get(SET_COOKIE);
+		assertEquals(1, list.size(), "Expect a cookie set request.");
+		log.trace("Cookie set by server: {}", list.toString());
+		return list.get(0);
+	}
+
+	private HttpHeaders getHeader(CsrfDto csrfData, String... cookies) {
 		HttpHeaders header = new HttpHeaders();
 		header.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE);
-		if (sessionId != null) {
-			header.add(COOKIE, sessionId);
+		for (String cookie : cookies) {
+			if (cookie != null) {
+				header.add(COOKIE, cookie);
+			}
 		}
 		if (csrfData != null) {
 			header.add(csrfData.getHeaderName(), csrfData.getToken());
@@ -264,12 +304,10 @@ public class LoginTest {
 	 * @param sessionId The session cookie.
 	 * @return The response from the web server.
 	 */
-	private ResponseEntity<CsrfDto> getLoginCsrfToken(String sessionId) {
-		HttpHeaders newHeader = getHeader(null, sessionId);
+	private ResponseEntity<CsrfDto> getLoginCsrfToken(HttpHeaders header) {
 		ResponseEntity<CsrfDto> newCsrfEntity = webclient.exchange(
-				"http://localhost:" + serverPort + "/rest/login/csrf", HttpMethod.GET, new HttpEntity<>(newHeader),
-				CsrfDto.class);
-		log.trace("Session and CSFR after login : {} {}", sessionId, newCsrfEntity.getBody());
+				"http://localhost:" + serverPort + "/rest/login/csrf", GET, new HttpEntity<>(header), CsrfDto.class);
+		log.trace("Session and CSFR after login : {} {}", header, newCsrfEntity.getBody());
 		return newCsrfEntity;
 	}
 
@@ -278,15 +316,16 @@ public class LoginTest {
 	 * 
 	 * @return A cookie.
 	 */
-	private String getLoginSessionId() {
+	private HttpHeaders getLoginSessionHeader() {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
-		String firstSessionId = getNewSetCookieContent(csrfEntity);
+		String firstSessionId = getFirstNewCookieContent(csrfEntity);
 		String loginUri = getLoginUri(csrfEntity.getBody());
 		HttpHeaders header = getHeader(null, firstSessionId);
 		ResponseEntity<String> postResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header), String.class);
 		log.trace("Session and CSFR before login : {} {}", firstSessionId, csrfEntity.getBody());
-		String newSessionId = getNewSetCookieContent(postResponse);
-		return newSessionId;
+		CsrfDto csrfDto = csrfEntity.getBody();
+		header = getSessionHeader(csrfDto, postResponse);
+		return header;
 	}
 
 	private String getLoginUri(CsrfDto csrfData) {
@@ -299,16 +338,6 @@ public class LoginTest {
 		return builder.build().toString();
 	}
 
-	/**
-	 * Get the cookie set by the server response.
-	 */
-	private String getNewSetCookieContent(ResponseEntity<?> entity) {
-		List<String> list = entity.getHeaders().get("Set-Cookie");
-		assertEquals(1, list.size(), "Expect a cookie set request.");
-		log.trace("Cookie set by server: {}", list.toString());
-		return list.get(0).split(";")[0];
-	}
-
 	private String getPostTestMessageUri(CsrfDto csrfData, String message) {
 		UriBuilder builder = new DefaultUriBuilderFactory("http://localhost:" + serverPort + "/rest/test/post")
 				.builder();
@@ -319,5 +348,30 @@ public class LoginTest {
 			builder.queryParam("message", message);
 		}
 		return builder.build().toString();
+	}
+
+	private HttpHeaders getSessionHeader(CsrfDto csrfData, ResponseEntity<?> loginResponse) {
+		return getSessionHeader(csrfData, loginResponse, true, true, true);
+	}
+
+	private HttpHeaders getSessionHeader(CsrfDto csrfData, ResponseEntity<?> loginResponse, boolean addSessionCookie,
+			boolean addCsrfCookie, boolean updateCsfrToken) {
+		List<String> newCookies = loginResponse.getHeaders().get(SET_COOKIE);
+		String sessionCookie = null, csrfCookie = null;
+		for (String newCookie : newCookies) {
+			String[] cookieSplit = newCookie.split(";");
+			String[] cookieBody = cookieSplit[0].split("=");
+			if (cookieSplit[0].startsWith("JS")) {
+				sessionCookie = newCookie;
+			} else if (cookieBody.length == 2 && cookieBody[1] != null && !cookieBody[1].isBlank()) {
+				if (updateCsfrToken) {
+					csrfData.setToken(cookieBody[1]);
+				}
+				csrfCookie = newCookie;
+			} else {
+				log.info("skip cookie remove: {}", newCookie);
+			}
+		}
+		return getHeader(csrfData, addSessionCookie ? sessionCookie : null, addCsrfCookie ? csrfCookie : null);
 	}
 }
