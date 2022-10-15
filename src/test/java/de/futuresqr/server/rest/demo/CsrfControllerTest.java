@@ -40,7 +40,7 @@ public class CsrfControllerTest {
 				String.class);
 
 		String result = getNewSetCookieContent(entity);
-		assertTrue(result.matches("^JSESSIONID=[a-zA-Z0-9]+$"));
+		assertTrue(result.matches("^XSRF-TOKEN=[a-f0-9\\-]+$"));
 	}
 
 	@Test
