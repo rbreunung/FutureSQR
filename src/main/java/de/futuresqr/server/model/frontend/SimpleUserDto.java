@@ -38,7 +38,7 @@ import lombok.Value;
 public class SimpleUserDto {
 	private UUID uuid;
 	private String displayname;
-	private UUID avatar;
+	private UUID avatarId;
 
 	public static SimpleUserDto fromPersistenceUser(PersistenceUser sourceUser) {
 		return new SimpleUserDto(sourceUser.getUuid(), sourceUser.getDisplayName(), sourceUser.getAvatarId());

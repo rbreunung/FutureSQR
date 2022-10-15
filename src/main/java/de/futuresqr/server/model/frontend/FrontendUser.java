@@ -54,20 +54,20 @@ public class FrontendUser {
 	private String loginName;
 	private String displayName;
 	private String[] vcsNames;
-	private String avatarLocation;
+	private String avatarId;
 	private String contactEmail;
 	private boolean banned;
 
 	public static FrontendUser fromPersistenceUser(PersistenceUser user) {
 		return builder().uuid(user.getUuid()).loginName(user.getLoginName()).displayName(user.getDisplayName())
-				.avatarLocation(user.getAvatarId() == null ? null : user.getAvatarId().toString())
+				.avatarId(user.getAvatarId() == null ? null : user.getAvatarId().toString())
 				.contactEmail(user.getEmail()).banned(user.isBanned()).build();
 	}
 
 	public PersistenceUser toPersistenceUser() {
 		PersistenceUserBuilder userBuilder = PersistenceUser.builder().uuid(uuid).loginName(loginName)
 				.displayName(displayName).avatarId(null).email(contactEmail).banned(banned);
-		Matcher matcher = uuidPattern.matcher(avatarLocation);
+		Matcher matcher = uuidPattern.matcher(avatarId);
 		if (matcher.find()) {
 			userBuilder.avatarId(UUID.fromString(matcher.group()));
 		}
