@@ -24,12 +24,15 @@
 package de.futuresqr.server.service;
 
 import static de.futuresqr.server.model.backend.PersistenceUser.toUserDetails;
+import static java.util.stream.Collectors.toSet;
+
+import java.util.Arrays;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Slice;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,6 +53,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FsqrUserDetailsManager implements UserDetailsManager {
 
+	private static final String PREFIX_ROLE = "ROLE_";
 	public static final String ROLE_ADMIN = "ADMIN";
 	public static final String ROLE_USER = "USER";
 
@@ -60,12 +64,14 @@ public class FsqrUserDetailsManager implements UserDetailsManager {
 	private void setPasswordEncoder(PasswordEncoder encoder) {
 		if (userRepository.count() == 0) {
 			log.info("Empty user repository. Set default users.");
-			UserDetails user = User.builder().username("user").password(encoder.encode("password")).roles(ROLE_USER)
-					.build();
-			createUser(user);
-			user = User.builder().username("admin").password(encoder.encode("admin")).roles(ROLE_ADMIN, ROLE_USER)
-					.build();
-			createUser(user);
+			PersistenceUser user = PersistenceUser.builder().loginName("user").password(encoder.encode("password"))
+					.grantedAuthorities(Arrays.stream(new String[] { PREFIX_ROLE + ROLE_USER }).collect(toSet()))
+					.displayName("Otto Normal").avatarId(UUID.randomUUID()).email("user@mindscan.local").build();
+			userRepository.save(user);
+			user = PersistenceUser.builder().loginName("admin").password(encoder.encode("admin")).grantedAuthorities(
+					Arrays.stream(new String[] { PREFIX_ROLE + ROLE_USER, PREFIX_ROLE + ROLE_ADMIN }).collect(toSet()))
+					.displayName("Super Power").avatarId(UUID.randomUUID()).email("admin@mindscan.local").build();
+			userRepository.save(user);
 		}
 	}
 

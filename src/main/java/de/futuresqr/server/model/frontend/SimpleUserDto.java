@@ -37,7 +37,7 @@ import lombok.Value;
 @Value
 public class SimpleUserDto {
 	private UUID uuid;
-	private String displayname;
+	private String displayName;
 	private UUID avatarId;
 
 	public static SimpleUserDto fromPersistenceUser(PersistenceUser sourceUser) {
