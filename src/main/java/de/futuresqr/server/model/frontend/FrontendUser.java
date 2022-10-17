@@ -52,6 +52,7 @@ public class FrontendUser {
 
 	private UUID uuid;
 	private String loginName;
+	private String password;
 	private String displayName;
 	private String[] vcsNames;
 	private String avatarId;
