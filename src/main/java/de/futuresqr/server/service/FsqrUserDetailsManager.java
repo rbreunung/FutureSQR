@@ -53,7 +53,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FsqrUserDetailsManager implements UserDetailsManager {
 
-	private static final String PREFIX_ROLE = "ROLE_";
+	public static final String PREFIX_ROLE = "ROLE_";
 	public static final String ROLE_ADMIN = "ADMIN";
 	public static final String ROLE_USER = "USER";
 
