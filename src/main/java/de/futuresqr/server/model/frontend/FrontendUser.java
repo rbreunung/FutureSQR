@@ -68,9 +68,11 @@ public class FrontendUser {
 	public PersistenceUser toPersistenceUser() {
 		PersistenceUserBuilder userBuilder = PersistenceUser.builder().uuid(uuid).loginName(loginName)
 				.displayName(displayName).avatarId(null).email(contactEmail).banned(banned);
-		Matcher matcher = uuidPattern.matcher(avatarId);
-		if (matcher.find()) {
-			userBuilder.avatarId(UUID.fromString(matcher.group()));
+		if (avatarId != null && !avatarId.isBlank()) {
+			Matcher matcher = uuidPattern.matcher(avatarId);
+			if (matcher.find()) {
+				userBuilder.avatarId(UUID.fromString(matcher.group()));
+			}
 		}
 		return userBuilder.build();
 	}
