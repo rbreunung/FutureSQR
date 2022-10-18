@@ -67,6 +67,8 @@ import de.futuresqr.server.restdata.UserRepository;
 @WebMvcTest(UserManagementController.class)
 public class UserManagementControllerTest {
 
+	private static final String USER_ADD = "alter";
+
 	@TestConfiguration
 	static class RequiresBeans {
 
@@ -99,14 +101,15 @@ public class UserManagementControllerTest {
 
 		when(userRepository.findByLoginName(ArgumentMatchers.matches("known"))).thenReturn(slice);
 		when(userRepository.findByLoginName(ArgumentMatchers.matches("unknown"))).thenReturn(emptySlice);
+		when(userRepository.findByLoginName(ArgumentMatchers.matches(USER_ADD))).thenReturn(emptySlice);
 	}
 
 	@Test
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestAddUser_validCall_returnStatusOk() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/add")).param("username", "alter").param("password", "newPassword")
-				.param("contactemail", "vailid@mail.tld").param("displayname", "alter ego").with(csrf())).andDo(print())
+		mvc.perform(post(URI.create("/rest/user/add")).param("loginName", USER_ADD).param("password", "newPassword")
+				.param("contactEmail", "vailid@mail.tld").param("displayName", "alter ego").with(csrf())).andDo(print())
 				// assert
 				.andExpect(status().isOk());
 	}
@@ -115,8 +118,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestAddUser_validCall_userSaved() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/add")).param("username", "alter").param("password", "newPassword")
-				.param("contactemail", "vailid@mail.tld").param("displayname", "alter ego").with(csrf()));
+		mvc.perform(post(URI.create("/rest/user/add")).param("loginName", USER_ADD).param("password", "newPassword")
+				.param("contactEmail", "vailid@mail.tld").param("displayName", "alter ego").with(csrf()));
 
 		verify(userRepository).save(notNull());
 	}
@@ -125,7 +128,7 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestBanUser_knownUser_returnStatusOk() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/ban")).param("username", "known").with(csrf()))
+		mvc.perform(post(URI.create("/rest/user/ban")).param("loginName", "known").with(csrf()))
 				// assert
 				.andExpect(status().isOk());
 	}
@@ -134,7 +137,7 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestBanUser_knownUser_userBanned() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/ban")).param("username", "known").with(csrf()));
+		mvc.perform(post(URI.create("/rest/user/ban")).param("loginName", "known").with(csrf()));
 		// assert
 		assertTrue(knownUser.isBanned());
 	}
@@ -143,7 +146,7 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestBanUser_unknownUser_returnStatusNotFound() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/ban")).param("username", "unknown").with(csrf()))
+		mvc.perform(post(URI.create("/rest/user/ban")).param("loginName", "unknown").with(csrf()))
 				// assert
 				.andExpect(status().isNotFound());
 	}
@@ -152,7 +155,7 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestUnbanUser_knownUser_returnStatusOk() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/unban")).param("username", "known").with(csrf()))
+		mvc.perform(post(URI.create("/rest/user/unban")).param("loginName", "known").with(csrf()))
 				// assert
 				.andExpect(status().isOk());
 	}
@@ -161,7 +164,7 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestUnbanUser_knownUser_userBanned() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/unban")).param("username", "known").with(csrf()));
+		mvc.perform(post(URI.create("/rest/user/unban")).param("loginName", "known").with(csrf()));
 		// assert
 		assertFalse(knownUser.isBanned());
 	}
@@ -170,7 +173,7 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestUnbanUser_unknownUser_returnStatusNotFound() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/unban")).param("username", "unknown").with(csrf()))
+		mvc.perform(post(URI.create("/rest/user/unban")).param("loginName", "unknown").with(csrf()))
 				// assert
 				.andExpect(status().isNotFound());
 	}
