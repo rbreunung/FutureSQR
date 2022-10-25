@@ -51,25 +51,28 @@ public class FrontendUser {
 			.compile("[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}");
 
 	private UUID uuid;
-	private String loginName;
-	private String password;
-	private String displayName;
+	private String loginname;
+	private String displayname;
 	private String[] vcsNames;
-	private String avatarId;
-	private String contactEmail;
-	private boolean banned;
+	private String avatarlocation;
+	private String email;
+	private boolean isbanned;
+	private long banned;
+	private long modified;
+	private long created;
 
 	public static FrontendUser fromPersistenceUser(PersistenceUser user) {
-		return builder().uuid(user.getUuid()).loginName(user.getLoginName()).displayName(user.getDisplayName())
-				.avatarId(user.getAvatarId() == null ? null : user.getAvatarId().toString())
-				.contactEmail(user.getEmail()).banned(user.isBanned()).build();
+		return builder().uuid(user.getUuid()).loginname(user.getLoginName()).displayname(user.getDisplayName())
+				.avatarlocation(user.getAvatarId() == null ? null : user.getAvatarId().toString())
+				.email(user.getEmail()).isbanned(user.isBanned()).modified(user.getLastChangeDate().toEpochMilli())
+				.build();
 	}
 
 	public PersistenceUser toPersistenceUser() {
-		PersistenceUserBuilder userBuilder = PersistenceUser.builder().uuid(uuid).loginName(loginName)
-				.displayName(displayName).avatarId(null).email(contactEmail).banned(banned);
-		if (avatarId != null && !avatarId.isBlank()) {
-			Matcher matcher = uuidPattern.matcher(avatarId);
+		PersistenceUserBuilder userBuilder = PersistenceUser.builder().uuid(uuid).loginName(loginname)
+				.displayName(displayname).avatarId(null).email(email).banned(isbanned);
+		if (avatarlocation != null && !avatarlocation.isBlank()) {
+			Matcher matcher = uuidPattern.matcher(avatarlocation);
 			if (matcher.find()) {
 				userBuilder.avatarId(UUID.fromString(matcher.group()));
 			}

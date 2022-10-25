@@ -64,8 +64,7 @@ import lombok.NoArgsConstructor;
 @Data
 @Entity
 //table name 'user' is reserved in databases
-@Table(name = "fsqrUser", uniqueConstraints = { @UniqueConstraint(columnNames = "loginName"),
-		@UniqueConstraint(columnNames = "email") })
+@Table(name = "fsqrUser", uniqueConstraints = { @UniqueConstraint(columnNames = "loginName") })
 public class PersistenceUser {
 
 	private UUID avatarId;

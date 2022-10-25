@@ -28,11 +28,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -40,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,12 +54,14 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.domain.Slice;
+import org.springframework.mock.web.MockPart;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import de.futuresqr.server.model.backend.PersistenceUser;
+import de.futuresqr.server.model.frontend.UserProperties;
 import de.futuresqr.server.rest.user.UserManagementController;
 import de.futuresqr.server.restdata.UserRepository;
 
@@ -67,8 +73,6 @@ import de.futuresqr.server.restdata.UserRepository;
 @WebMvcTest(UserManagementController.class)
 public class UserManagementControllerTest {
 
-	private static final String USER_ADD = "alter";
-
 	@TestConfiguration
 	static class RequiresBeans {
 
@@ -77,6 +81,13 @@ public class UserManagementControllerTest {
 			return new BCryptPasswordEncoder();
 		}
 	}
+
+	private static final UUID KNOWN_USER_ID = UUID.randomUUID();
+	private static final String REST_USER_BAN = "/rest/user/ban";
+	private static final String REST_USER_UNBAN = "/rest/user/unban";
+	private static final UUID UNKNOWN_USER_ID = UUID.randomUUID();
+
+	private static final String USER_ADD = "alter";
 
 	private PersistenceUser knownUser;
 
@@ -92,6 +103,7 @@ public class UserManagementControllerTest {
 		when(userRepository.save(any())).then(returnsFirstArg());
 
 		knownUser = PersistenceUser.builder().loginName("known").build();
+		knownUser.setUuid(KNOWN_USER_ID);
 		Iterator<PersistenceUser> iterator = Arrays.asList(knownUser).iterator();
 		Slice<PersistenceUser> slice = mock(Slice.class);
 		when(slice.iterator()).thenReturn(iterator);
@@ -99,7 +111,7 @@ public class UserManagementControllerTest {
 		Slice<PersistenceUser> emptySlice = mock(Slice.class);
 		when(emptySlice.isEmpty()).thenReturn(true);
 
-		when(userRepository.findByLoginName(ArgumentMatchers.matches("known"))).thenReturn(slice);
+		when(userRepository.getReferenceById(eq(KNOWN_USER_ID))).thenReturn(knownUser);
 		when(userRepository.findByLoginName(ArgumentMatchers.matches("unknown"))).thenReturn(emptySlice);
 		when(userRepository.findByLoginName(ArgumentMatchers.matches(USER_ADD))).thenReturn(emptySlice);
 	}
@@ -108,8 +120,9 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestAddUser_validCall_returnStatusOk() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/add")).param("loginName", USER_ADD).param("password", "newPassword")
-				.param("contactEmail", "vailid@mail.tld").param("displayName", "alter ego").with(csrf())).andDo(print())
+		mvc.perform(post(URI.create("/rest/user/add")).param(UserProperties.LOGIN_NAME, USER_ADD)
+				.param(UserProperties.PASSWORD, "newPassword").param(UserProperties.EMAIL, "vailid@mail.tld")
+				.param(UserProperties.DISPLAY_NAME, "alter ego").with(csrf())).andDo(print())
 				// assert
 				.andExpect(status().isOk());
 	}
@@ -118,8 +131,9 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestAddUser_validCall_userSaved() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/add")).param("loginName", USER_ADD).param("password", "newPassword")
-				.param("contactEmail", "vailid@mail.tld").param("displayName", "alter ego").with(csrf()));
+		mvc.perform(post(URI.create("/rest/user/add")).param(UserProperties.LOGIN_NAME, USER_ADD)
+				.param(UserProperties.PASSWORD, "newPassword").param(UserProperties.EMAIL, "vailid@mail.tld")
+				.param(UserProperties.DISPLAY_NAME, "alter ego").with(csrf()));
 
 		verify(userRepository).save(notNull());
 	}
@@ -128,7 +142,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestBanUser_knownUser_returnStatusOk() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/ban")).param("loginName", "known").with(csrf()))
+		URI uri = URI.create(REST_USER_BAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(KNOWN_USER_ID)).with(csrf()))
 				// assert
 				.andExpect(status().isOk());
 	}
@@ -137,7 +152,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestBanUser_knownUser_userBanned() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/ban")).param("loginName", "known").with(csrf()));
+		URI uri = URI.create(REST_USER_BAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(KNOWN_USER_ID)).with(csrf()));
 		// assert
 		assertTrue(knownUser.isBanned());
 	}
@@ -146,7 +162,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestBanUser_unknownUser_returnStatusNotFound() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/ban")).param("loginName", "unknown").with(csrf()))
+		URI uri = URI.create(REST_USER_BAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(UNKNOWN_USER_ID)).with(csrf()))
 				// assert
 				.andExpect(status().isNotFound());
 	}
@@ -155,7 +172,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestUnbanUser_knownUser_returnStatusOk() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/unban")).param("loginName", "known").with(csrf()))
+		URI uri = URI.create(REST_USER_UNBAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(KNOWN_USER_ID)).with(csrf()))
 				// assert
 				.andExpect(status().isOk());
 	}
@@ -164,7 +182,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestUnbanUser_knownUser_userBanned() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/unban")).param("loginName", "known").with(csrf()));
+		URI uri = URI.create(REST_USER_UNBAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(KNOWN_USER_ID)).with(csrf()));
 		// assert
 		assertFalse(knownUser.isBanned());
 	}
@@ -173,8 +192,17 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestUnbanUser_unknownUser_returnStatusNotFound() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/unban")).param("loginName", "unknown").with(csrf()))
+		URI uri = URI.create(REST_USER_UNBAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(UNKNOWN_USER_ID)).with(csrf()))
 				// assert
 				.andExpect(status().isNotFound());
+	}
+
+	private MockPart createUuidPart(UUID uuid) {
+		return createPart(UserProperties.UUID, uuid.toString());
+	}
+
+	private MockPart createPart(String name, String content) {
+		return new MockPart(name, content.getBytes());
 	}
 }

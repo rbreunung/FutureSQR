@@ -23,42 +23,45 @@
  */
 package de.futuresqr.server.rest.user;
 
-import static org.springframework.http.MediaType.APPLICATION_JSON;
+import java.io.IOException;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Slice;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import de.futuresqr.server.model.backend.PersistenceUser;
-import de.futuresqr.server.model.frontend.FrontendUser;
-import de.futuresqr.server.restdata.UserRepository;
+import de.futuresqr.server.model.frontend.UserProperties;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * This controller provides information about the current authenticated user.
- * 
+ * This filter overrides the default
+ * {@link UsernamePasswordAuthenticationFilter} in order to read user and
+ * password from multi part form.
+ *
  * @author Robert Breunung
  */
-@RestController
-public class UserInfoController {
+@Slf4j
+public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
-	@Autowired
-	private UserRepository userRepository;
-
-	@GetMapping(path = "/rest/user/info")
-	ResponseEntity<FrontendUser> getUserInfo(HttpServletRequest request) {
-		String remoteUser = request.getRemoteUser();
-		if (remoteUser != null) {
-			Slice<PersistenceUser> findByLoginName = userRepository.findByLoginName(remoteUser);
-			if (!findByLoginName.isEmpty()) {
-				PersistenceUser user = findByLoginName.iterator().next();
-				return ResponseEntity.ok().contentType(APPLICATION_JSON).body(FrontendUser.fromPersistenceUser(user));
-			}
-
+	@Override
+	protected String obtainPassword(HttpServletRequest request) {
+		try {
+			byte[] bytes = request.getPart(UserProperties.PASSWORD).getInputStream().readAllBytes();
+			return new String(bytes);
+		} catch (IOException | ServletException e) {
+			log.error("Cannot read password from submit.", e);
 		}
-
-		return ResponseEntity.notFound().build();
+		return null;
 	}
+
+	@Override
+	protected String obtainUsername(HttpServletRequest request) {
+		try {
+			byte[] bytes = request.getPart(UserProperties.LOGIN_NAME).getInputStream().readAllBytes();
+			return new String(bytes);
+		} catch (IOException | ServletException e) {
+			log.error("Cannot read login name from submit.", e);
+		}
+		return null;
+	}
+
 }

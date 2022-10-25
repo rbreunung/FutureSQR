@@ -21,26 +21,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.futuresqr.server.model.frontend;
+package de.futuresqr.server.rest.user;
 
-import java.util.UUID;
-
-import de.futuresqr.server.model.backend.PersistenceUser;
-import lombok.Value;
+import org.springframework.security.config.annotation.web.HttpSecurityBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractAuthenticationFilterConfigurer;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 /**
- * The simple list of user information represents a bare minimum of information
- * to resolve the user id.
- * 
+ * This {@link LoginConfigurer} introduces the {@link LoginFilter} to the
+ * {@link HttpSecurity} and provides initial configuration methods.
+ *
  * @author Robert Breunung
  */
-@Value
-public class SimpleUserDto {
-	private UUID uuid;
-	private String displayname;
-	private UUID avatarlocation;
+public class LoginConfigurer<H extends HttpSecurityBuilder<H>>
+		extends AbstractAuthenticationFilterConfigurer<H, LoginConfigurer<H>, LoginFilter> {
 
-	public static SimpleUserDto fromPersistenceUser(PersistenceUser sourceUser) {
-		return new SimpleUserDto(sourceUser.getUuid(), sourceUser.getDisplayName(), sourceUser.getAvatarId());
+	public LoginConfigurer() {
+		super(new LoginFilter(), null);
 	}
+
+	@Override
+	protected RequestMatcher createLoginProcessingUrlMatcher(String loginProcessingUrl) {
+		return new AntPathRequestMatcher(loginProcessingUrl, "POST");
+	}
+
 }

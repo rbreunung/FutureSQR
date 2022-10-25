@@ -45,6 +45,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilder;
 
+import de.futuresqr.server.model.frontend.UserProperties;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -90,7 +91,8 @@ public class LoginControllerTest {
 
 		ResponseEntity<String> loginResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
 
-		assertTrue(loginResponse.getStatusCode().is2xxSuccessful(), "User login successful.");
+		assertEquals(302, loginResponse.getStatusCode().value(), "User login successful.");
+		assertTrue(loginResponse.getHeaders().get(HttpHeaders.LOCATION).get(0).endsWith("/rest/user/info"));
 	}
 
 	@Test
@@ -105,7 +107,8 @@ public class LoginControllerTest {
 
 		ResponseEntity<String> loginResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
 
-		assertTrue(loginResponse.getStatusCode().is2xxSuccessful(), "User login successful.");
+		assertEquals(302, loginResponse.getStatusCode().value(), "User login successful.");
+		assertTrue(loginResponse.getHeaders().get(HttpHeaders.LOCATION).get(0).endsWith("/rest/user/info"));
 	}
 
 	@Test
@@ -160,7 +163,7 @@ public class LoginControllerTest {
 	private String getLoginUri(CsrfDto csrfData) {
 		UriBuilder builder = new DefaultUriBuilderFactory("http://localhost:" + serverPort + "/rest/user/authenticate")
 				.builder();
-		builder.queryParam("username", "user").queryParam("password", "password");
+		builder.queryParam(UserProperties.LOGIN_NAME, "user").queryParam(UserProperties.PASSWORD, "password");
 		if (csrfData != null) {
 			builder.queryParam(csrfData.getParameterName(), csrfData.getToken());
 		}
@@ -171,7 +174,7 @@ public class LoginControllerTest {
 	 * Get the cookie set by the server response.
 	 */
 	private String getNewSetCookieContent(ResponseEntity<?> entity) {
-		List<String> list = entity.getHeaders().get("Set-Cookie");
+		List<String> list = entity.getHeaders().get(HttpHeaders.SET_COOKIE);
 		assertEquals(1, list.size(), "Expect a cookie set request.");
 		log.info("Cookie set by server: {}", list.toString());
 		return list.get(0).split(";")[0];

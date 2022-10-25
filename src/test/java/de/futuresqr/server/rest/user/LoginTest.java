@@ -49,6 +49,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilder;
 
+import de.futuresqr.server.model.frontend.UserProperties;
 import de.futuresqr.server.rest.demo.CsrfDto;
 import lombok.extern.slf4j.Slf4j;
 
@@ -94,7 +95,7 @@ public class LoginTest {
 	public void getUser_validRequestWithAuthentication_statusOk() {
 
 		HttpHeaders loginSessionHeader = getLoginSessionHeader();
-		String uri = "http://localhost:" + serverPort + "/rest/user";
+		String uri = "http://localhost:" + serverPort + "/restdata/user";
 		RequestEntity<Void> requestEntity = RequestEntity.get(uri).headers(loginSessionHeader).accept(APPLICATION_JSON)
 				.build();
 
@@ -331,7 +332,7 @@ public class LoginTest {
 	private String getLoginUri(CsrfDto csrfData) {
 		UriBuilder builder = new DefaultUriBuilderFactory(
 				"http://localhost:" + serverPort + PATH_REST_USER_AUTHENTICATE).builder();
-		builder.queryParam("username", "user").queryParam("password", "password");
+		builder.queryParam(UserProperties.LOGIN_NAME, "admin").queryParam(UserProperties.PASSWORD, "admin");
 		if (csrfData != null) {
 			builder.queryParam(csrfData.getParameterName(), csrfData.getToken());
 		}

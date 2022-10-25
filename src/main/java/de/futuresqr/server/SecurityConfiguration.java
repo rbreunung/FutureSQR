@@ -29,11 +29,13 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
-import de.futuresqr.server.rest.user.LoginHandler;
+import de.futuresqr.server.rest.demo.LoginHandler;
+import de.futuresqr.server.rest.user.LoginConfigurer;
 import de.futuresqr.server.restdata.UserRepository;
 import de.futuresqr.server.service.FsqrUserDetailsManager;
 
@@ -61,11 +63,18 @@ public class SecurityConfiguration {
 				.antMatchers(PATH_REST).authenticated()
 				// plain data repository area
 				.antMatchers(PATH_RESTDATA).hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
-		http.formLogin().loginProcessingUrl(PATH_REST_USER_AUTHENTICATE)
-				.successHandler(authenticationSuccessHandler(null));
-		http.logout().logoutUrl("/rest/user/logout");
+		http.apply(new LoginConfigurer<>()).loginProcessingUrl(PATH_REST_USER_AUTHENTICATE) //
+				.defaultSuccessUrl("/rest/user/info", true);
+//		LoginFilter loginFilter = new LoginFilter();
+//		loginFilter
+//				.setRequiresAuthenticationRequestMatcher(new AntPathRequestMatcher(PATH_REST_USER_AUTHENTICATE + "2"));
+//		http.addFilter(loginFilter);
+		http.logout().logoutUrl("/rest/user/logout") //
+				.logoutSuccessUrl("/rest/user/info");
 		http.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse());
-		return http.build();
+		DefaultSecurityFilterChain build = http.build();
+//		loginFilter.setAuthenticationManager(http.getSharedObject(AuthenticationManager.class));
+		return build;
 	}
 
 	@Bean

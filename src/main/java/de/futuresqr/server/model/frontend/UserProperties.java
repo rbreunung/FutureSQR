@@ -23,24 +23,23 @@
  */
 package de.futuresqr.server.model.frontend;
 
-import java.util.UUID;
-
-import de.futuresqr.server.model.backend.PersistenceUser;
-import lombok.Value;
-
 /**
- * The simple list of user information represents a bare minimum of information
- * to resolve the user id.
- * 
+ * This class represents the properties found in {@link FrontendUser} and
+ * {@link SimpleUserDto} as constants.
+ *
  * @author Robert Breunung
  */
-@Value
-public class SimpleUserDto {
-	private UUID uuid;
-	private String displayname;
-	private UUID avatarlocation;
+public final class UserProperties {
 
-	public static SimpleUserDto fromPersistenceUser(PersistenceUser sourceUser) {
-		return new SimpleUserDto(sourceUser.getUuid(), sourceUser.getDisplayName(), sourceUser.getAvatarId());
+	public static final String BANNED = "banned";
+	public static final String DISPLAY_NAME = "displayname";
+	public static final String EMAIL = "email";
+	public static final String IS_BANNED = "isbanned";
+	public static final String LOGIN_NAME = "loginname";
+	public static final String PASSWORD = "password";
+	public static final String UUID = "uuid";
+
+	// do not instantiate
+	private UserProperties() {
 	}
 }

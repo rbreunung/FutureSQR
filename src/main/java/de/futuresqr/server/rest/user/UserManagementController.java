@@ -23,29 +23,36 @@
  */
 package de.futuresqr.server.rest.user;
 
+import static de.futuresqr.server.model.frontend.UserProperties.DISPLAY_NAME;
+import static de.futuresqr.server.model.frontend.UserProperties.EMAIL;
+import static de.futuresqr.server.model.frontend.UserProperties.LOGIN_NAME;
+import static de.futuresqr.server.model.frontend.UserProperties.PASSWORD;
+
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Slice;
-import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 
 import de.futuresqr.server.model.backend.PersistenceUser;
 import de.futuresqr.server.model.backend.PersistenceUser.PersistenceUserBuilder;
 import de.futuresqr.server.model.frontend.FrontendUser;
 import de.futuresqr.server.model.frontend.SimpleUserDto;
+import de.futuresqr.server.model.frontend.UserProperties;
 import de.futuresqr.server.restdata.UserRepository;
 import de.futuresqr.server.service.FsqrUserDetailsManager;
 import jakarta.annotation.security.RolesAllowed;
@@ -79,38 +86,15 @@ public class UserManagementController {
 	}
 
 	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
-	@PostMapping("/addUser")
-	ResponseEntity<FrontendUser> postAddUser(@RequestBody() FrontendUser user) {
-
-		log.info("Add User: {}", user);
-
-		Assert.hasLength(user.getPassword(), "Password requires content.");
-		Assert.isTrue(userRepo.findByLoginName(user.getLoginName()).isEmpty(), "User with same login exists.");
-
-		user.setUuid(null);
-		PersistenceUser persistenceUser = user.toPersistenceUser();
-
-		HashSet<String> roles = new HashSet<>();
-		roles.add(FsqrUserDetailsManager.PREFIX_ROLE + FsqrUserDetailsManager.ROLE_USER);
-		persistenceUser.setGrantedAuthorities(roles);
-		persistenceUser.setPassword(encoder.encode(user.getPassword()));
-
-		persistenceUser = userRepo.save(persistenceUser);
-
-		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
-	}
-
-	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
 	@PostMapping("/add")
-	ResponseEntity<FrontendUser> postAddUser(@RequestParam("loginName") String loginName,
-			@RequestParam(name = "password") String password, @RequestParam(name = "contactEmail") String email,
-			@RequestParam(name = "displayName") String displayName) {
-
+	ResponseEntity<FrontendUser> postAddUser(@RequestPart(LOGIN_NAME) String loginName,
+			@RequestPart(PASSWORD) String password, @RequestPart(EMAIL) String email,
+			@RequestPart(DISPLAY_NAME) String displayName) {
 		Assert.hasLength(password, "Password requires content.");
 		Assert.isTrue(userRepo.findByLoginName(loginName).isEmpty(), "User with same login exists.");
 
 		HashSet<String> roles = new HashSet<>();
-		roles.add("ROLE_" + FsqrUserDetailsManager.ROLE_USER);
+		roles.add(FsqrUserDetailsManager.PREFIX_ROLE + FsqrUserDetailsManager.ROLE_USER);
 
 		PersistenceUserBuilder userBuilder = PersistenceUser.builder().loginName(loginName)
 				.password(encoder.encode(password)).grantedAuthorities(roles).email(email).displayName(displayName);
@@ -121,11 +105,25 @@ public class UserManagementController {
 	}
 
 	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
-	@PostMapping({ "/ban" })
-	ResponseEntity<FrontendUser> postBanUser(@RequestParam("loginName") String username,
-			RequestEntity<String> request) {
+	@PostMapping("/edit")
+	ResponseEntity<FrontendUser> postEditUser(@RequestPart(UserProperties.UUID) String uuid,
+			@RequestPart(DISPLAY_NAME) Optional<String> displayName) {
 
-		PersistenceUser persistenceUser = getUser(username);
+		PersistenceUser persistenceUser = userRepo.getReferenceById(UUID.fromString(uuid));
+
+		displayName.ifPresent(persistenceUser::setDisplayName);
+		persistenceUser.setLastChangeDate(Instant.now());
+
+		persistenceUser = userRepo.save(persistenceUser);
+
+		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
+	}
+
+	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
+	@PostMapping({ "/ban" })
+	ResponseEntity<FrontendUser> postBanUser(@RequestPart(UserProperties.UUID) String uuid) {
+
+		PersistenceUser persistenceUser = userRepo.getReferenceById(UUID.fromString(uuid));
 		if (persistenceUser == null) {
 			return ResponseEntity.notFound().build();
 		}
@@ -134,28 +132,10 @@ public class UserManagementController {
 	}
 
 	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
-	@PostMapping("/editUser")
-	ResponseEntity<FrontendUser> postEditUser(@RequestBody() FrontendUser user) {
-
-		log.info("Add User: {}", user);
-
-		PersistenceUser newUser = user.toPersistenceUser();
-		PersistenceUser oldUser = userRepo.getReferenceById(user.getUuid());
-		newUser.setPassword(oldUser.getPassword());
-		newUser.setLoginName(oldUser.getLoginName());
-		newUser.setGrantedAuthorities(oldUser.getGrantedAuthorities());
-
-		newUser = userRepo.save(newUser);
-
-		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(newUser));
-	}
-
-	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
 	@PostMapping({ "/unban" })
-	ResponseEntity<FrontendUser> postUnbanUser(@RequestParam("loginName") String username,
-			RequestEntity<String> request) {
+	ResponseEntity<FrontendUser> postUnbanUser(@RequestPart(UserProperties.UUID) String uuid) {
 
-		PersistenceUser persistenceUser = getUser(username);
+		PersistenceUser persistenceUser = userRepo.getReferenceById(UUID.fromString(uuid));
 		if (persistenceUser == null) {
 			return ResponseEntity.notFound().build();
 		}
@@ -163,11 +143,11 @@ public class UserManagementController {
 		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
 	}
 
-	@PostMapping({ "/updateContactEmail" })
-	ResponseEntity<FrontendUser> postUpdateContact(@RequestParam("loginName") String username,
-			@RequestParam(name = "contactEmail") String email) {
+	@PostMapping({ "/updateEmail" })
+	ResponseEntity<FrontendUser> postUpdateContact(@RequestParam(UserProperties.UUID) String uuid,
+			@RequestParam(EMAIL) String email) {
 
-		PersistenceUser persistenceUser = getUser(username);
+		PersistenceUser persistenceUser = userRepo.getReferenceById(UUID.fromString(uuid));
 		if (persistenceUser == null) {
 			return ResponseEntity.notFound().build();
 		}
@@ -177,21 +157,16 @@ public class UserManagementController {
 	}
 
 	@PostMapping({ "/updateDisplayName" })
-	ResponseEntity<FrontendUser> postUpdateDisplayName(@RequestParam("loginName") String loginName,
-			@RequestParam("displayName") String displayName) {
+	ResponseEntity<FrontendUser> postUpdateDisplayName(@RequestParam(UserProperties.UUID) String uuid,
+			@RequestParam(DISPLAY_NAME) String displayName) {
 
-		final PersistenceUser persistenceUser = getUser(loginName);
+		final PersistenceUser persistenceUser = userRepo.getReferenceById(UUID.fromString(uuid));
 		if (persistenceUser == null) {
 			return ResponseEntity.notFound().build();
 		}
 		persistenceUser.setDisplayName(displayName);
 		PersistenceUser updatedPersistenceUser = userRepo.save(persistenceUser);
 		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(updatedPersistenceUser));
-	}
-
-	private PersistenceUser getUser(String username) {
-		Slice<PersistenceUser> slice = userRepo.findByLoginName(username);
-		return slice.isEmpty() ? null : slice.iterator().next();
 	}
 
 	/**
