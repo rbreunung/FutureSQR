@@ -62,10 +62,15 @@ public class FrontendUser {
 	private long created;
 
 	public static FrontendUser fromPersistenceUser(PersistenceUser user) {
-		return builder().uuid(user.getUuid()).loginname(user.getLoginName()).displayname(user.getDisplayName())
+		FrontendUserBuilder userBuilder = builder().uuid(user.getUuid()).loginname(user.getLoginName())
+				.displayname(user.getDisplayName())
 				.avatarlocation(user.getAvatarId() == null ? null : user.getAvatarId().toString())
 				.email(user.getEmail()).isbanned(user.isBanned()).modified(user.getLastChangeDate().toEpochMilli())
-				.build();
+				.created(user.getCreatedDate().toEpochMilli());
+		if (user.getBannedDate() != null) {
+			builder().banned(user.getBannedDate().toEpochMilli());
+		}
+		return userBuilder.build();
 	}
 
 	public PersistenceUser toPersistenceUser() {

@@ -23,6 +23,7 @@
  */
 package de.futuresqr.server.rest.user;
 
+import static de.futuresqr.server.model.frontend.UserProperties.BANNED;
 import static de.futuresqr.server.model.frontend.UserProperties.DISPLAY_NAME;
 import static de.futuresqr.server.model.frontend.UserProperties.EMAIL;
 import static de.futuresqr.server.model.frontend.UserProperties.LOGIN_NAME;
@@ -42,7 +43,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -68,6 +68,7 @@ public class UserManagementController {
 
 	@Autowired
 	private PasswordEncoder encoder;
+	@SuppressWarnings("unused")
 	private Logger log = LoggerFactory.getLogger(getClass());
 
 	@Autowired
@@ -105,21 +106,6 @@ public class UserManagementController {
 	}
 
 	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
-	@PostMapping("/edit")
-	ResponseEntity<FrontendUser> postEditUser(@RequestPart(UserProperties.UUID) String uuid,
-			@RequestPart(DISPLAY_NAME) Optional<String> displayName) {
-
-		PersistenceUser persistenceUser = userRepo.getReferenceById(UUID.fromString(uuid));
-
-		displayName.ifPresent(persistenceUser::setDisplayName);
-		persistenceUser.setLastChangeDate(Instant.now());
-
-		persistenceUser = userRepo.save(persistenceUser);
-
-		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
-	}
-
-	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
 	@PostMapping({ "/ban" })
 	ResponseEntity<FrontendUser> postBanUser(@RequestPart(UserProperties.UUID) String uuid) {
 
@@ -127,8 +113,28 @@ public class UserManagementController {
 		if (persistenceUser == null) {
 			return ResponseEntity.notFound().build();
 		}
-		persistenceUser = setBanned(true, persistenceUser);
+		final Instant now = Instant.now();
+		persistenceUser.setLastChangeDate(now);
+		setBanned(persistenceUser, now, true);
+		persistenceUser = userRepo.save(persistenceUser);
 		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
+	}
+
+	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
+	@PostMapping("/edit")
+	ResponseEntity<FrontendUser> postEditUser(@RequestPart(UserProperties.UUID) String uuid,
+			@RequestPart(DISPLAY_NAME) Optional<String> displayName, @RequestPart(BANNED) Optional<Boolean> isBanned) {
+
+		final PersistenceUser persistenceUser = userRepo.getReferenceById(UUID.fromString(uuid));
+		final Instant now = Instant.now();
+
+		displayName.ifPresent(persistenceUser::setDisplayName);
+		persistenceUser.setLastChangeDate(now);
+		isBanned.ifPresent(b -> {
+			setBanned(persistenceUser, now, b);
+		});
+
+		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(userRepo.save(persistenceUser)));
 	}
 
 	@RolesAllowed(FsqrUserDetailsManager.ROLE_ADMIN)
@@ -139,7 +145,11 @@ public class UserManagementController {
 		if (persistenceUser == null) {
 			return ResponseEntity.notFound().build();
 		}
-		persistenceUser = setBanned(false, persistenceUser);
+
+		final Instant now = Instant.now();
+		persistenceUser.setLastChangeDate(now);
+		setBanned(persistenceUser, now, false);
+		persistenceUser = userRepo.save(persistenceUser);
 		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(persistenceUser));
 	}
 
@@ -169,15 +179,13 @@ public class UserManagementController {
 		return ResponseEntity.ok(FrontendUser.fromPersistenceUser(updatedPersistenceUser));
 	}
 
-	/**
-	 * Update ban state and store to persistence.
-	 */
-	private PersistenceUser setBanned(boolean newBanned, PersistenceUser user) {
-		user.setBanned(newBanned);
-		Instant bannedDate = Instant.now();
-		user.setBannedDate(bannedDate);
-		user.setLastChangeDate(bannedDate);
-		return userRepo.save(user);
+	private void setBanned(final PersistenceUser persistenceUser, final Instant now, boolean b) {
+		persistenceUser.setBanned(b);
+		if (b && persistenceUser.getBannedDate() == null) {
+			persistenceUser.setBannedDate(now);
+		} else if (!b) {
+			persistenceUser.setBannedDate(null);
+		}
 	}
 
 }
