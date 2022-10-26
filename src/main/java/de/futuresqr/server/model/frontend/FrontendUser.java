@@ -68,7 +68,7 @@ public class FrontendUser {
 				.email(user.getEmail()).isbanned(user.isBanned()).modified(user.getLastChangeDate().toEpochMilli())
 				.created(user.getCreatedDate().toEpochMilli());
 		if (user.getBannedDate() != null) {
-			builder().banned(user.getBannedDate().toEpochMilli());
+			userBuilder.banned(user.getBannedDate().toEpochMilli());
 		}
 		return userBuilder.build();
 	}
