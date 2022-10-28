@@ -32,11 +32,11 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import de.futuresqr.server.model.frontend.UserProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
@@ -55,30 +55,12 @@ public class LoginController {
 	AuthenticationConfiguration authenticationConfiguration;
 
 	@PostMapping(path = "/rest/login")
-	ResponseEntity<String> postLogin(@RequestParam(name = "username", required = false) final String username,
-			@RequestParam(name = "password", required = false) final String password,
-			@RequestParam(name = "_csrf", required = false) final String csrf, final HttpServletRequest request,
-			final CsrfToken tokenContainer) throws Exception {
+	ResponseEntity<String> postLogin(
+			@RequestParam(name = UserProperties.LOGIN_NAME, required = false) final String username,
+			@RequestParam(name = UserProperties.PASSWORD, required = false) final String password,
+			final HttpServletRequest request) throws Exception {
 
-		log.trace("user {} pass {} csrf {}", username, password, csrf);
-
-		if (tokenContainer != null && tokenContainer.getToken() != null) {
-
-			final String foundToken;
-			if (csrf != null) {
-				foundToken = csrf;
-			} else {
-				foundToken = request.getHeader(tokenContainer.getHeaderName());
-			}
-			if (tokenContainer.getToken().equals(foundToken)) {
-				log.trace("CSRF match");
-			} else {
-				return ResponseEntity.status(403).body("Invalid authentication");
-			}
-
-		} else {
-			log.warn("No CSRF required for {}", username);
-		}
+		log.trace("user {} pass {}", username, password);
 
 		UsernamePasswordAuthenticationToken authReq = new UsernamePasswordAuthenticationToken(username, password);
 		Authentication auth = authenticationConfiguration.getAuthenticationManager().authenticate(authReq);
@@ -87,6 +69,6 @@ public class LoginController {
 		HttpSession session = request.getSession(true);
 		session.setAttribute(SPRING_SECURITY_CONTEXT_KEY, sc);
 
-		return ResponseEntity.ok(String.format("user %s pass %s csrf %s", username, password, csrf));
+		return ResponseEntity.ok(String.format("user %s pass %s", username, password));
 	}
 }

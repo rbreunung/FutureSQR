@@ -91,8 +91,7 @@ public class LoginControllerTest {
 
 		ResponseEntity<String> loginResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
 
-		assertEquals(302, loginResponse.getStatusCode().value(), "User login successful.");
-		assertTrue(loginResponse.getHeaders().get(HttpHeaders.LOCATION).get(0).endsWith("/rest/user/info"));
+		assertTrue(loginResponse.getStatusCode().is2xxSuccessful(), "User login successful.");
 	}
 
 	@Test
@@ -107,8 +106,7 @@ public class LoginControllerTest {
 
 		ResponseEntity<String> loginResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
 
-		assertEquals(302, loginResponse.getStatusCode().value(), "User login successful.");
-		assertTrue(loginResponse.getHeaders().get(HttpHeaders.LOCATION).get(0).endsWith("/rest/user/info"));
+		assertTrue(loginResponse.getStatusCode().is2xxSuccessful(), "User login successful.");
 	}
 
 	@Test
@@ -133,13 +131,16 @@ public class LoginControllerTest {
 	public void postTest_authenticated_success() {
 
 		final String getCsfrUri = "http://localhost:" + serverPort + "/rest/login/csrf";
-		ResponseEntity<CsrfDto> csrfEntity = webclient.getForEntity(getCsfrUri, CsrfDto.class);
-		CsrfDto csrfData = csrfEntity.getBody();
-		String sessionId = getNewSetCookieContent(csrfEntity);
+		ResponseEntity<CsrfDto> csrfResponse = webclient.getForEntity(getCsfrUri, CsrfDto.class);
+
+		CsrfDto csrfData = csrfResponse.getBody();
+		final String anonymousSession = getNewSetCookieContent(csrfResponse);
 		String loginUri = getLoginUri(null);
-		HttpHeaders header = getHeader(csrfData, sessionId);
+		HttpHeaders header = getHeader(csrfData, anonymousSession);
 		ResponseEntity<String> loginPost = webclient.postForEntity(loginUri, new HttpEntity<>(header), String.class);
-		header = getSessionHeader(csrfData, loginPost);
+
+		String sessionCookie = getNewSetCookieContent(loginPost);
+		header = getHeader(csrfResponse.getBody(), sessionCookie, anonymousSession);
 		ResponseEntity<String> response = webclient.exchange(getPostTestMessageUri(null, MESSAGE), POST,
 				new HttpEntity<>(header), String.class);
 
@@ -161,8 +162,7 @@ public class LoginControllerTest {
 	}
 
 	private String getLoginUri(CsrfDto csrfData) {
-		UriBuilder builder = new DefaultUriBuilderFactory("http://localhost:" + serverPort + "/rest/user/authenticate")
-				.builder();
+		UriBuilder builder = new DefaultUriBuilderFactory("http://localhost:" + serverPort + "/rest/login").builder();
 		builder.queryParam(UserProperties.LOGIN_NAME, "user").queryParam(UserProperties.PASSWORD, "password");
 		if (csrfData != null) {
 			builder.queryParam(csrfData.getParameterName(), csrfData.getToken());
@@ -174,10 +174,10 @@ public class LoginControllerTest {
 	 * Get the cookie set by the server response.
 	 */
 	private String getNewSetCookieContent(ResponseEntity<?> entity) {
-		List<String> list = entity.getHeaders().get(HttpHeaders.SET_COOKIE);
+		List<String> list = entity.getHeaders().get(SET_COOKIE);
 		assertEquals(1, list.size(), "Expect a cookie set request.");
 		log.info("Cookie set by server: {}", list.toString());
-		return list.get(0).split(";")[0];
+		return list.get(0);
 	}
 
 	private String getPostTestMessageUri(CsrfDto csrfData, String message) {
@@ -190,23 +190,5 @@ public class LoginControllerTest {
 			builder.queryParam("message", message);
 		}
 		return builder.build().toString();
-	}
-
-	private HttpHeaders getSessionHeader(CsrfDto csrfData, ResponseEntity<String> loginResponse) {
-		List<String> newCookies = loginResponse.getHeaders().get(SET_COOKIE);
-		String sessionCookie = null, csrfCookie = null;
-		for (String newCookie : newCookies) {
-			String[] cookieSplit = newCookie.split(";");
-			String[] cookieBody = cookieSplit[0].split("=");
-			if (cookieSplit[0].startsWith("JS")) {
-				sessionCookie = newCookie;
-			} else if (cookieBody.length == 2 && cookieBody[1] != null && !cookieBody[1].isBlank()) {
-				csrfData.setToken(cookieBody[1]);
-				csrfCookie = newCookie;
-			} else {
-				log.info("skip cookie remove: {}", newCookie);
-			}
-		}
-		return getHeader(csrfData, sessionCookie, csrfCookie);
 	}
 }

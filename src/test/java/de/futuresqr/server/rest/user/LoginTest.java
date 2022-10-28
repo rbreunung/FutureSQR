@@ -24,9 +24,12 @@
 package de.futuresqr.server.rest.user;
 
 import static de.futuresqr.server.SecurityConfiguration.PATH_REST_USER_AUTHENTICATE;
+import static de.futuresqr.server.model.frontend.UserProperties.LOGIN_NAME;
+import static de.futuresqr.server.model.frontend.UserProperties.PASSWORD;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.HttpHeaders.COOKIE;
+import static org.springframework.http.HttpHeaders.LOCATION;
 import static org.springframework.http.HttpHeaders.SET_COOKIE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -34,6 +37,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -46,10 +50,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilder;
 
-import de.futuresqr.server.model.frontend.UserProperties;
 import de.futuresqr.server.rest.demo.CsrfDto;
 import lombok.extern.slf4j.Slf4j;
 
@@ -66,17 +70,173 @@ public class LoginTest {
 	@LocalServerPort
 	int serverPort;
 
+	private ResponseEntity<CsrfDto> csrfEntity;
+
 	@Autowired
 	private TestRestTemplate webclient;
 
 	@Test
-	public void getLoginTest_validRequestWithAuthentication_messageReplied() {
-		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
+	public void postLogin_missingCsrfTokenAndSessionCookie_statusForbidden() {
+
+		String uri = getLoginUri(null);
+		LinkedMultiValueMap<String, String> body = getLoginFormBody();
+
+		ResponseEntity<String> postResponse = webclient.postForEntity(uri,
+				new HttpEntity<>(body, getHeader(null, true)), String.class);
+
+		assertEquals(403, postResponse.getStatusCode().value(),
+				"Access shall be forbidden with unsafe authentication.");
+	}
+
+	@Test
+	public void postLogin_missingSessionCookie_statusForbidden() {
+		CsrfDto csrfData = csrfEntity.getBody();
+		String uri = getLoginUri(csrfData);
+		HttpHeaders header = getHeader(csrfData, true);
+
+		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
+
+		assertEquals(403, postResponse.getStatusCode().value(), "Access shall be forbidden with missing session.");
+	}
+
+	@Test
+	public void postLogin_validRequestFormCsrfToken_authenticationRedirection() {
+
 		CsrfDto csrfData = csrfEntity.getBody();
 		String sessionId = getFirstNewCookieContent(csrfEntity);
-		String uri = getLoginUri(csrfData, true);
-		HttpHeaders header = getHeader(null, sessionId);
-		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
+		String uri = getLoginUri(csrfData);
+
+		HttpHeaders header = getHeader(null, true, sessionId);
+		LinkedMultiValueMap<String, String> body = getLoginFormBody();
+
+		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(body, header),
+				String.class);
+
+		assertTrue(postResponse.getStatusCode().is3xxRedirection(), "User will be redirected.");
+		assertTrue(postResponse.getHeaders().get(LOCATION).get(0).contains("/rest/user/info"),
+				"Redirect to user info expected.");
+	}
+
+	@Test
+	public void postLogin_validRequestHeaderCsrfToken_authenticationRedirection() {
+		CsrfDto csrfData = csrfEntity.getBody();
+		String sessionId = getFirstNewCookieContent(csrfEntity);
+		String uri = getLoginUri(null);
+
+		LinkedMultiValueMap<String, String> body = getLoginFormBody();
+		HttpHeaders header = getHeader(csrfData, true, sessionId);
+
+		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(body, header),
+				String.class);
+
+		assertTrue(postResponse.getStatusCode().is3xxRedirection(), "User will be redirected.");
+		assertTrue(postResponse.getHeaders().get(LOCATION).get(0).contains("/rest/user/info"),
+				"Redirect to user info expected.");
+	}
+
+	@Test
+	public void postLogin_requestWithoutAuthentication_statusForbidden() {
+
+		final String randomMessage = UUID.randomUUID().toString();
+		String postMessageUri = getPostTestMessageUri(null, randomMessage);
+		HttpHeaders sessionHeader = getHeader(null, false);
+
+		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
+				new HttpEntity<>(sessionHeader), String.class);
+
+		assertEquals(403, postResponse.getStatusCode().value(), "User without cookie and CSRF token expected.");
+	}
+
+	@Test
+	public void postLoginTest_validRequestWithAuthentication_messageReplied() {
+
+		HttpHeaders loginSessionHeader = getLoginSessionHeader();
+		CsrfDto loginCsrf = getLoginCsrfToken(loginSessionHeader).getBody();
+		final String randomMessage = UUID.randomUUID().toString();
+		String postMessageUri = getPostTestMessageUri(loginCsrf, randomMessage);
+
+		ResponseEntity<String> messageResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
+				new HttpEntity<>(loginSessionHeader), String.class);
+
+		assertTrue(messageResponse.getStatusCode().is2xxSuccessful(), "Answer shall be successful (ok).");
+		assertEquals(randomMessage, messageResponse.getBody(), "Answer shall return the message.");
+	}
+
+	@Test
+	public void postLoginTest_validRequestWithAuthenticationWithoutCsrf_statusForbidden() {
+		CsrfDto csrfDto = csrfEntity.getBody();
+		String firstSessionId = getFirstNewCookieContent(csrfEntity);
+		String loginUri = getLoginUri(csrfDto);
+		HttpHeaders header = getHeader(null, true, firstSessionId);
+
+		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
+				String.class);
+		HttpHeaders sessionHeader = getSessionHeader(csrfDto, postLoginResponse, true, true, false);
+		final String randomMessage = UUID.randomUUID().toString();
+		String postMessageUri = getPostTestMessageUri(null, randomMessage);
+
+		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
+				new HttpEntity<>(sessionHeader), String.class);
+
+		assertEquals(403, postResponse.getStatusCode().value(), "User without session cookie cannot post expected.");
+	}
+
+	@Test
+	public void postLoginTest_validRequestWithAuthenticationWithoutNewCsrfCookie_statusForbidden() {
+		CsrfDto csrfDto = csrfEntity.getBody();
+		String firstSessionId = getFirstNewCookieContent(csrfEntity);
+		String loginUri = getLoginUri(csrfDto);
+		HttpHeaders header = getHeader(null, true, firstSessionId);
+
+		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
+				String.class);
+		HttpHeaders sessionHeader = getSessionHeader(csrfDto, postLoginResponse, true, false, true);
+		final String randomMessage = UUID.randomUUID().toString();
+		String postMessageUri = getPostTestMessageUri(csrfDto, randomMessage);
+
+		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
+				new HttpEntity<>(sessionHeader), String.class);
+
+		assertEquals(403, postResponse.getStatusCode().value(), "User without CSRF cookie cannot post expected.");
+	}
+
+	@Test
+	public void postLoginTest_validRequestWithAuthenticationWithoutNewSessionCookie_statusForbidden() {
+		CsrfDto csrfDto = csrfEntity.getBody();
+		String firstSessionId = getFirstNewCookieContent(csrfEntity);
+		String loginUri = getLoginUri(csrfDto);
+
+		HttpHeaders header = getHeader(null, true, firstSessionId);
+		LinkedMultiValueMap<String, String> body = getLoginFormBody();
+
+		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(body, header),
+				String.class);
+		HttpHeaders sessionHeader = getSessionHeader(csrfDto, postLoginResponse, false, true, true);
+		final String randomMessage = UUID.randomUUID().toString();
+		String postMessageUri = getPostTestMessageUri(csrfDto, randomMessage);
+
+		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
+				new HttpEntity<>(sessionHeader), String.class);
+
+		assertEquals(302, postResponse.getStatusCode().value(), "User without session cookie cannot post expected.");
+	}
+
+	@BeforeEach
+	public void setup() {
+		csrfEntity = getCsfrEntity();
+	}
+
+	@Test
+	public void getLogin_validRequestWithAuthentication_messageReplied() {
+		CsrfDto csrfData = csrfEntity.getBody();
+		String sessionId = getFirstNewCookieContent(csrfEntity);
+		String uri = getLoginUri(csrfData);
+
+		HttpHeaders header = getHeader(null, true, sessionId);
+		LinkedMultiValueMap<String, String> body = getLoginFormBody();
+
+		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(body, header),
+				String.class);
 		sessionId = postResponse.getHeaders().get(SET_COOKIE).stream().filter(s -> s.startsWith("J")).findAny().get();
 		final String randomMessage = UUID.randomUUID().toString();
 		uri = getPostTestMessageUri(null, randomMessage);
@@ -109,166 +269,18 @@ public class LoginTest {
 
 	@Test
 	public void postLogin_missingCsrf_statusForbidden() {
-		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
+
 		String sessionId = getFirstNewCookieContent(csrfEntity);
-		String uri = getLoginUri(null, true);
-		HttpHeaders header = getHeader(null, sessionId);
+		String uri = getLoginUri(null);
 
-		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
+		HttpHeaders header = getHeader(null, true, sessionId);
+		LinkedMultiValueMap<String, String> body = getLoginFormBody();
 
-		assertEquals(403, postResponse.getStatusCode().value(),
-				"Access shall be forbidden with unsafe authentication.");
-	}
-
-	@Test
-	public void postLogin_missingCsrfTokenAndSessionCookie_statusForbidden() {
-
-		String uri = getLoginUri(null, true);
-
-		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(getHeader(null)),
+		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(body, header),
 				String.class);
 
 		assertEquals(403, postResponse.getStatusCode().value(),
 				"Access shall be forbidden with unsafe authentication.");
-	}
-
-	@Test
-	public void postLogin_missingSessionCookie_statusForbidden() {
-		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
-		CsrfDto csrfData = csrfEntity.getBody();
-		String uri = getLoginUri(csrfData, true);
-		HttpHeaders header = getHeader(csrfData);
-
-		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
-
-		assertEquals(403, postResponse.getStatusCode().value(), "Access shall be forbidden with missing session.");
-	}
-
-	@Test
-	public void postLogin_validRequestFormCsrfToken_authenticationRedirection() {
-		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
-		CsrfDto csrfData = csrfEntity.getBody();
-		String sessionId = getFirstNewCookieContent(csrfEntity);
-		String uri = getLoginUri(csrfData, true);
-		HttpHeaders header = getHeader(null, sessionId);
-
-		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
-
-		assertTrue(postResponse.getStatusCode().is2xxSuccessful(), "User will receive his user data object.");
-	}
-
-	@Test
-	public void postLogin_validRequestHeaderCsrfToken_authenticationRedirection() {
-		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
-		CsrfDto csrfData = csrfEntity.getBody();
-		String sessionId = getFirstNewCookieContent(csrfEntity);
-		String uri = getLoginUri(null, true);
-		HttpHeaders header = getHeader(csrfData, sessionId);
-
-		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
-
-		assertTrue(postResponse.getStatusCode().is2xxSuccessful(), "User will receive his user data object.");
-	}
-
-	@Test
-	public void postLoginForm_validRequestHeaderCsrfToken_authenticationRedirection() {
-		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
-		CsrfDto csrfData = csrfEntity.getBody();
-		String sessionId = getFirstNewCookieContent(csrfEntity);
-		String uri = getLoginUri(null, false);
-		HttpHeaders header = getHeader(csrfData, sessionId);
-
-		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
-
-		assertTrue(postResponse.getStatusCode().is2xxSuccessful(), "User will receive his user data object.");
-	}
-
-	@Test
-	public void postLoginTest_requestWithoutAuthentication_statusForbidden() {
-
-		final String randomMessage = UUID.randomUUID().toString();
-		String postMessageUri = getPostTestMessageUri(null, randomMessage);
-		HttpHeaders sessionHeader = getHeader(null);
-
-		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
-				new HttpEntity<>(sessionHeader), String.class);
-
-		assertEquals(403, postResponse.getStatusCode().value(), "User without cookie and CSRF token expected.");
-	}
-
-	@Test
-	public void postLoginTest_validRequestWithAuthentication_messageReplied() {
-
-		HttpHeaders loginSessionHeader = getLoginSessionHeader();
-		CsrfDto loginCsrf = getLoginCsrfToken(loginSessionHeader).getBody();
-		final String randomMessage = UUID.randomUUID().toString();
-		String postMessageUri = getPostTestMessageUri(loginCsrf, randomMessage);
-
-		ResponseEntity<String> messageResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
-				new HttpEntity<>(loginSessionHeader), String.class);
-
-		assertTrue(messageResponse.getStatusCode().is2xxSuccessful(), "Answer shall be successful (ok).");
-		assertEquals(randomMessage, messageResponse.getBody(), "Answer shall return the message.");
-	}
-
-	@Test
-	public void postLoginTest_validRequestWithAuthenticationWithoutCsrf_statusForbidden() {
-		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
-		CsrfDto csrfDto = csrfEntity.getBody();
-		String firstSessionId = getFirstNewCookieContent(csrfEntity);
-		String loginUri = getLoginUri(csrfDto, true);
-		HttpHeaders header = getHeader(null, firstSessionId);
-
-		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
-				String.class);
-		HttpHeaders sessionHeader = getSessionHeader(csrfDto, postLoginResponse, true, true, false);
-		final String randomMessage = UUID.randomUUID().toString();
-		String postMessageUri = getPostTestMessageUri(null, randomMessage);
-
-		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
-				new HttpEntity<>(sessionHeader), String.class);
-
-		assertEquals(403, postResponse.getStatusCode().value(), "User without session cookie cannot post expected.");
-	}
-
-	@Test
-	public void postLoginTest_validRequestWithAuthenticationWithoutNewCsrfCookie_statusForbidden() {
-		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
-		CsrfDto csrfDto = csrfEntity.getBody();
-		String firstSessionId = getFirstNewCookieContent(csrfEntity);
-		String loginUri = getLoginUri(csrfDto, true);
-		HttpHeaders header = getHeader(null, firstSessionId);
-
-		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
-				String.class);
-		HttpHeaders sessionHeader = getSessionHeader(csrfDto, postLoginResponse, true, false, true);
-		final String randomMessage = UUID.randomUUID().toString();
-		String postMessageUri = getPostTestMessageUri(csrfDto, randomMessage);
-
-		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
-				new HttpEntity<>(sessionHeader), String.class);
-
-		assertEquals(403, postResponse.getStatusCode().value(), "User without CSRF cookie cannot post expected.");
-	}
-
-	@Test
-	public void postLoginTest_validRequestWithAuthenticationWithoutNewSessionCookie_statusForbidden() {
-		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
-		CsrfDto csrfDto = csrfEntity.getBody();
-		String firstSessionId = getFirstNewCookieContent(csrfEntity);
-		String loginUri = getLoginUri(csrfDto, true);
-		HttpHeaders header = getHeader(null, firstSessionId);
-
-		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
-				String.class);
-		HttpHeaders sessionHeader = getSessionHeader(csrfDto, postLoginResponse, false, true, true);
-		final String randomMessage = UUID.randomUUID().toString();
-		String postMessageUri = getPostTestMessageUri(csrfDto, randomMessage);
-
-		ResponseEntity<String> postResponse = webclient.exchange(postMessageUri, HttpMethod.POST,
-				new HttpEntity<>(sessionHeader), String.class);
-
-		assertEquals(302, postResponse.getStatusCode().value(), "User without session cookie cannot post expected.");
 	}
 
 	private ResponseEntity<CsrfDto> getCsfrEntity() {
@@ -285,9 +297,11 @@ public class LoginTest {
 		return list.get(0);
 	}
 
-	private HttpHeaders getHeader(CsrfDto csrfData, String... cookies) {
+	private HttpHeaders getHeader(CsrfDto csrfData, boolean multipart, String... cookies) {
 		HttpHeaders header = new HttpHeaders();
-		header.add(HttpHeaders.CONTENT_TYPE, MediaType.MULTIPART_FORM_DATA_VALUE);
+		if (multipart) {
+			header.add(HttpHeaders.CONTENT_TYPE, MediaType.MULTIPART_FORM_DATA_VALUE);
+		}
 		for (String cookie : cookies) {
 			if (cookie != null) {
 				header.add(COOKIE, cookie);
@@ -325,29 +339,37 @@ public class LoginTest {
 		return newCsrfEntity;
 	}
 
+	private LinkedMultiValueMap<String, String> getLoginFormBody() {
+		LinkedMultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
+		body.add(LOGIN_NAME, "admin");
+		body.add(PASSWORD, "admin");
+		return body;
+	}
+
 	/**
 	 * Get a valid cookie session from a login process.
 	 * 
 	 * @return A cookie.
 	 */
 	private HttpHeaders getLoginSessionHeader() {
-		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
+
 		String firstSessionId = getFirstNewCookieContent(csrfEntity);
-		String loginUri = getLoginUri(csrfEntity.getBody(), true);
-		HttpHeaders header = getHeader(null, firstSessionId);
-		ResponseEntity<String> postResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header), String.class);
+		String loginUri = getLoginUri(csrfEntity.getBody());
+
+		HttpHeaders header = getHeader(null, true, firstSessionId);
+		LinkedMultiValueMap<String, String> body = getLoginFormBody();
+		ResponseEntity<String> postResponse = webclient.postForEntity(loginUri, new HttpEntity<>(body, header),
+				String.class);
+
 		log.trace("Session and CSFR before login : {} {}", firstSessionId, csrfEntity.getBody());
 		CsrfDto csrfDto = csrfEntity.getBody();
 		header = getSessionHeader(csrfDto, postResponse);
 		return header;
 	}
 
-	private String getLoginUri(CsrfDto csrfData, boolean loginParam) {
+	private String getLoginUri(CsrfDto csrfData) {
 		UriBuilder builder = new DefaultUriBuilderFactory(
 				"http://localhost:" + serverPort + PATH_REST_USER_AUTHENTICATE).builder();
-		if (loginParam) {
-			builder.queryParam(UserProperties.LOGIN_NAME, "admin").queryParam(UserProperties.PASSWORD, "admin");
-		}
 		if (csrfData != null) {
 			builder.queryParam(csrfData.getParameterName(), csrfData.getToken());
 		}
@@ -388,6 +410,6 @@ public class LoginTest {
 				log.info("skip cookie remove: {}", newCookie);
 			}
 		}
-		return getHeader(csrfData, addSessionCookie ? sessionCookie : null, addCsrfCookie ? csrfCookie : null);
+		return getHeader(csrfData, false, addSessionCookie ? sessionCookie : null, addCsrfCookie ? csrfCookie : null);
 	}
 }
