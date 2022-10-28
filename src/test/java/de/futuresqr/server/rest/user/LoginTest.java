@@ -74,7 +74,7 @@ public class LoginTest {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfData = csrfEntity.getBody();
 		String sessionId = getFirstNewCookieContent(csrfEntity);
-		String uri = getLoginUri(csrfData);
+		String uri = getLoginUri(csrfData, true);
 		HttpHeaders header = getHeader(null, sessionId);
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
 		sessionId = postResponse.getHeaders().get(SET_COOKIE).stream().filter(s -> s.startsWith("J")).findAny().get();
@@ -111,7 +111,7 @@ public class LoginTest {
 	public void postLogin_missingCsrf_statusForbidden() {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		String sessionId = getFirstNewCookieContent(csrfEntity);
-		String uri = getLoginUri(null);
+		String uri = getLoginUri(null, true);
 		HttpHeaders header = getHeader(null, sessionId);
 
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
@@ -123,7 +123,7 @@ public class LoginTest {
 	@Test
 	public void postLogin_missingCsrfTokenAndSessionCookie_statusForbidden() {
 
-		String uri = getLoginUri(null);
+		String uri = getLoginUri(null, true);
 
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(getHeader(null)),
 				String.class);
@@ -136,7 +136,7 @@ public class LoginTest {
 	public void postLogin_missingSessionCookie_statusForbidden() {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfData = csrfEntity.getBody();
-		String uri = getLoginUri(csrfData);
+		String uri = getLoginUri(csrfData, true);
 		HttpHeaders header = getHeader(csrfData);
 
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
@@ -149,7 +149,7 @@ public class LoginTest {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfData = csrfEntity.getBody();
 		String sessionId = getFirstNewCookieContent(csrfEntity);
-		String uri = getLoginUri(csrfData);
+		String uri = getLoginUri(csrfData, true);
 		HttpHeaders header = getHeader(null, sessionId);
 
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
@@ -162,7 +162,20 @@ public class LoginTest {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfData = csrfEntity.getBody();
 		String sessionId = getFirstNewCookieContent(csrfEntity);
-		String uri = getLoginUri(null);
+		String uri = getLoginUri(null, true);
+		HttpHeaders header = getHeader(csrfData, sessionId);
+
+		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
+
+		assertTrue(postResponse.getStatusCode().is2xxSuccessful(), "User will receive his user data object.");
+	}
+
+	@Test
+	public void postLoginForm_validRequestHeaderCsrfToken_authenticationRedirection() {
+		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
+		CsrfDto csrfData = csrfEntity.getBody();
+		String sessionId = getFirstNewCookieContent(csrfEntity);
+		String uri = getLoginUri(null, false);
 		HttpHeaders header = getHeader(csrfData, sessionId);
 
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(header), String.class);
@@ -203,7 +216,7 @@ public class LoginTest {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfDto = csrfEntity.getBody();
 		String firstSessionId = getFirstNewCookieContent(csrfEntity);
-		String loginUri = getLoginUri(csrfEntity.getBody());
+		String loginUri = getLoginUri(csrfDto, true);
 		HttpHeaders header = getHeader(null, firstSessionId);
 
 		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
@@ -223,7 +236,7 @@ public class LoginTest {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfDto = csrfEntity.getBody();
 		String firstSessionId = getFirstNewCookieContent(csrfEntity);
-		String loginUri = getLoginUri(csrfEntity.getBody());
+		String loginUri = getLoginUri(csrfDto, true);
 		HttpHeaders header = getHeader(null, firstSessionId);
 
 		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
@@ -243,7 +256,7 @@ public class LoginTest {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		CsrfDto csrfDto = csrfEntity.getBody();
 		String firstSessionId = getFirstNewCookieContent(csrfEntity);
-		String loginUri = getLoginUri(csrfEntity.getBody());
+		String loginUri = getLoginUri(csrfDto, true);
 		HttpHeaders header = getHeader(null, firstSessionId);
 
 		ResponseEntity<String> postLoginResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header),
@@ -274,7 +287,7 @@ public class LoginTest {
 
 	private HttpHeaders getHeader(CsrfDto csrfData, String... cookies) {
 		HttpHeaders header = new HttpHeaders();
-		header.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE);
+		header.add(HttpHeaders.CONTENT_TYPE, MediaType.MULTIPART_FORM_DATA_VALUE);
 		for (String cookie : cookies) {
 			if (cookie != null) {
 				header.add(COOKIE, cookie);
@@ -320,7 +333,7 @@ public class LoginTest {
 	private HttpHeaders getLoginSessionHeader() {
 		ResponseEntity<CsrfDto> csrfEntity = getCsfrEntity();
 		String firstSessionId = getFirstNewCookieContent(csrfEntity);
-		String loginUri = getLoginUri(csrfEntity.getBody());
+		String loginUri = getLoginUri(csrfEntity.getBody(), true);
 		HttpHeaders header = getHeader(null, firstSessionId);
 		ResponseEntity<String> postResponse = webclient.postForEntity(loginUri, new HttpEntity<>(header), String.class);
 		log.trace("Session and CSFR before login : {} {}", firstSessionId, csrfEntity.getBody());
@@ -329,10 +342,12 @@ public class LoginTest {
 		return header;
 	}
 
-	private String getLoginUri(CsrfDto csrfData) {
+	private String getLoginUri(CsrfDto csrfData, boolean loginParam) {
 		UriBuilder builder = new DefaultUriBuilderFactory(
 				"http://localhost:" + serverPort + PATH_REST_USER_AUTHENTICATE).builder();
-		builder.queryParam(UserProperties.LOGIN_NAME, "admin").queryParam(UserProperties.PASSWORD, "admin");
+		if (loginParam) {
+			builder.queryParam(UserProperties.LOGIN_NAME, "admin").queryParam(UserProperties.PASSWORD, "admin");
+		}
 		if (csrfData != null) {
 			builder.queryParam(csrfData.getParameterName(), csrfData.getToken());
 		}

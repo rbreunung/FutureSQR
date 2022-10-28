@@ -23,6 +23,9 @@
  */
 package de.futuresqr.server.rest;
 
+import static de.futuresqr.server.model.frontend.UserProperties.EMAIL;
+import static de.futuresqr.server.model.frontend.UserProperties.LOGIN_NAME;
+import static de.futuresqr.server.model.frontend.UserProperties.PASSWORD;
 import static de.futuresqr.server.service.FsqrUserDetailsManager.ROLE_ADMIN;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -82,12 +85,14 @@ public class UserManagementControllerTest {
 		}
 	}
 
-	private static final UUID KNOWN_USER_ID = UUID.randomUUID();
-	private static final String REST_USER_BAN = "/rest/user/ban";
-	private static final String REST_USER_UNBAN = "/rest/user/unban";
-	private static final UUID UNKNOWN_USER_ID = UUID.randomUUID();
+	private static final String LOGIN_NAME_ADD = "alter";
 
-	private static final String USER_ADD = "alter";
+	private static final String PATH_REST_USER_ADD = "/rest/user/add";
+	private static final String PATH_REST_USER_BAN = "/rest/user/ban";
+	private static final String PATH_REST_USER_UNBAN = "/rest/user/unban";
+
+	private static final UUID USER_KNOWN_ID = UUID.randomUUID();
+	private static final UUID USER_UNKNOWN_ID = UUID.randomUUID();
 
 	private PersistenceUser knownUser;
 
@@ -103,7 +108,7 @@ public class UserManagementControllerTest {
 		when(userRepository.save(any())).then(returnsFirstArg());
 
 		knownUser = PersistenceUser.builder().loginName("known").build();
-		knownUser.setUuid(KNOWN_USER_ID);
+		knownUser.setUuid(USER_KNOWN_ID);
 		Iterator<PersistenceUser> iterator = Arrays.asList(knownUser).iterator();
 		Slice<PersistenceUser> slice = mock(Slice.class);
 		when(slice.iterator()).thenReturn(iterator);
@@ -111,18 +116,20 @@ public class UserManagementControllerTest {
 		Slice<PersistenceUser> emptySlice = mock(Slice.class);
 		when(emptySlice.isEmpty()).thenReturn(true);
 
-		when(userRepository.getReferenceById(eq(KNOWN_USER_ID))).thenReturn(knownUser);
+		when(userRepository.getReferenceById(eq(USER_KNOWN_ID))).thenReturn(knownUser);
 		when(userRepository.findByLoginName(ArgumentMatchers.matches("unknown"))).thenReturn(emptySlice);
-		when(userRepository.findByLoginName(ArgumentMatchers.matches(USER_ADD))).thenReturn(emptySlice);
+		when(userRepository.findByLoginName(ArgumentMatchers.matches(LOGIN_NAME_ADD))).thenReturn(emptySlice);
 	}
 
 	@Test
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestAddUser_validCall_returnStatusOk() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/add")).param(UserProperties.LOGIN_NAME, USER_ADD)
-				.param(UserProperties.PASSWORD, "newPassword").param(UserProperties.EMAIL, "vailid@mail.tld")
-				.param(UserProperties.DISPLAY_NAME, "alter ego").with(csrf())).andDo(print())
+		URI uri = URI.create(PATH_REST_USER_ADD);
+		mvc.perform(multipart(POST, uri)
+				.part(createPart(LOGIN_NAME, LOGIN_NAME_ADD), createPart(PASSWORD, "newPassword"),
+						createPart(EMAIL, "vailid@mail.tld"), createPart(UserProperties.DISPLAY_NAME, "alter ego"))
+				.with(csrf()))
 				// assert
 				.andExpect(status().isOk());
 	}
@@ -131,9 +138,11 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestAddUser_validCall_userSaved() throws Exception {
 
-		mvc.perform(post(URI.create("/rest/user/add")).param(UserProperties.LOGIN_NAME, USER_ADD)
-				.param(UserProperties.PASSWORD, "newPassword").param(UserProperties.EMAIL, "vailid@mail.tld")
-				.param(UserProperties.DISPLAY_NAME, "alter ego").with(csrf()));
+		URI uri = URI.create(PATH_REST_USER_ADD);
+		mvc.perform(multipart(POST, uri)
+				.part(createPart(LOGIN_NAME, LOGIN_NAME_ADD), createPart(PASSWORD, "newPassword"),
+						createPart(EMAIL, "vailid@mail.tld"), createPart(UserProperties.DISPLAY_NAME, "alter ego"))
+				.with(csrf()));
 
 		verify(userRepository).save(notNull());
 	}
@@ -142,8 +151,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestBanUser_knownUser_returnStatusOk() throws Exception {
 
-		URI uri = URI.create(REST_USER_BAN);
-		mvc.perform(multipart(POST, uri).part(createUuidPart(KNOWN_USER_ID)).with(csrf()))
+		URI uri = URI.create(PATH_REST_USER_BAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(USER_KNOWN_ID)).with(csrf()))
 				// assert
 				.andExpect(status().isOk());
 	}
@@ -152,8 +161,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestBanUser_knownUser_userBanned() throws Exception {
 
-		URI uri = URI.create(REST_USER_BAN);
-		mvc.perform(multipart(POST, uri).part(createUuidPart(KNOWN_USER_ID)).with(csrf()));
+		URI uri = URI.create(PATH_REST_USER_BAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(USER_KNOWN_ID)).with(csrf()));
 		// assert
 		assertTrue(knownUser.isBanned());
 	}
@@ -162,8 +171,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestBanUser_unknownUser_returnStatusNotFound() throws Exception {
 
-		URI uri = URI.create(REST_USER_BAN);
-		mvc.perform(multipart(POST, uri).part(createUuidPart(UNKNOWN_USER_ID)).with(csrf()))
+		URI uri = URI.create(PATH_REST_USER_BAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(USER_UNKNOWN_ID)).with(csrf()))
 				// assert
 				.andExpect(status().isNotFound());
 	}
@@ -172,8 +181,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestUnbanUser_knownUser_returnStatusOk() throws Exception {
 
-		URI uri = URI.create(REST_USER_UNBAN);
-		mvc.perform(multipart(POST, uri).part(createUuidPart(KNOWN_USER_ID)).with(csrf()))
+		URI uri = URI.create(PATH_REST_USER_UNBAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(USER_KNOWN_ID)).with(csrf()))
 				// assert
 				.andExpect(status().isOk());
 	}
@@ -182,8 +191,8 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestUnbanUser_knownUser_userBanned() throws Exception {
 
-		URI uri = URI.create(REST_USER_UNBAN);
-		mvc.perform(multipart(POST, uri).part(createUuidPart(KNOWN_USER_ID)).with(csrf()));
+		URI uri = URI.create(PATH_REST_USER_UNBAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(USER_KNOWN_ID)).with(csrf()));
 		// assert
 		assertFalse(knownUser.isBanned());
 	}
@@ -192,17 +201,17 @@ public class UserManagementControllerTest {
 	@WithMockUser(username = "admin", password = "admin", roles = ROLE_ADMIN)
 	public void testRestUnbanUser_unknownUser_returnStatusNotFound() throws Exception {
 
-		URI uri = URI.create(REST_USER_UNBAN);
-		mvc.perform(multipart(POST, uri).part(createUuidPart(UNKNOWN_USER_ID)).with(csrf()))
+		URI uri = URI.create(PATH_REST_USER_UNBAN);
+		mvc.perform(multipart(POST, uri).part(createUuidPart(USER_UNKNOWN_ID)).with(csrf()))
 				// assert
 				.andExpect(status().isNotFound());
 	}
 
-	private MockPart createUuidPart(UUID uuid) {
-		return createPart(UserProperties.UUID, uuid.toString());
-	}
-
 	private MockPart createPart(String name, String content) {
 		return new MockPart(name, content.getBytes());
+	}
+
+	private MockPart createUuidPart(UUID uuid) {
+		return createPart(UserProperties.UUID, uuid.toString());
 	}
 }
