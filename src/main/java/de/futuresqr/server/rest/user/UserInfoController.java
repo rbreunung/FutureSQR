@@ -47,7 +47,7 @@ public class UserInfoController {
 	@Autowired
 	private UserRepository userRepository;
 
-	@GetMapping(path = "/rest/user/info")
+	@GetMapping(path = {"/rest/user/info", "/rest/user/reauthenticate"})
 	ResponseEntity<FrontendUser> getUserInfo(HttpServletRequest request) {
 		String remoteUser = request.getRemoteUser();
 		if (remoteUser != null) {
