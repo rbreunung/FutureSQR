@@ -64,7 +64,7 @@ public class SecurityConfiguration {
 				// plain data repository area
 				.antMatchers(PATH_RESTDATA).hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
 		http.apply(new LoginConfigurer<>()).loginProcessingUrl(PATH_REST_USER_AUTHENTICATE) //
-				.defaultSuccessUrl("/rest/user/info", true);
+				.successHandler(authenticationSuccessHandler(null));
 //		LoginFilter loginFilter = new LoginFilter();
 //		loginFilter
 //				.setRequiresAuthenticationRequestMatcher(new AntPathRequestMatcher(PATH_REST_USER_AUTHENTICATE + "2"));
