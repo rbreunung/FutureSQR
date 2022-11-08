@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 
 import de.futuresqr.server.model.backend.PersistenceUser;
 import de.futuresqr.server.model.backend.PersistenceUser.PersistenceUserBuilder;
+import de.futuresqr.server.service.FsqrUserDetailsManager;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -54,6 +55,7 @@ public class FrontendUser {
 	private String loginname;
 	private String displayname;
 	private String[] vcsNames;
+	private String[] roles;
 	private String avatarlocation;
 	private String email;
 	private boolean isbanned;
@@ -66,6 +68,9 @@ public class FrontendUser {
 				.displayname(user.getDisplayName())
 				.avatarlocation(user.getAvatarId() == null ? null : user.getAvatarId().toString())
 				.email(user.getEmail()).isbanned(user.isBanned()).modified(user.getLastChangeDate().toEpochMilli())
+				.roles(user.getGrantedAuthorities().stream()
+						.filter(r -> r.startsWith(FsqrUserDetailsManager.PREFIX_ROLE))
+						.map(r -> r.substring(FsqrUserDetailsManager.PREFIX_ROLE.length())).toArray(String[]::new))
 				.created(user.getCreatedDate().toEpochMilli());
 		if (user.getBannedDate() != null) {
 			userBuilder.banned(user.getBannedDate().toEpochMilli());
