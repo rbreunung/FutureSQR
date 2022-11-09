@@ -56,7 +56,7 @@ public class SecurityConfiguration {
 
 		http.authorizeHttpRequests() // authorization section
 				// rest login area
-				.antMatchers("/rest/login/**", "/rest/user/info").permitAll()
+				.antMatchers("/rest/login/**", "/rest/user/info", "/rest/user/reauthenticate").permitAll()
 				// demo end point for SayHello.java
 				.antMatchers("/rest/say-hello").permitAll()
 				// user repository area
@@ -65,15 +65,10 @@ public class SecurityConfiguration {
 				.antMatchers(PATH_RESTDATA).hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
 		http.apply(new LoginConfigurer<>()).loginProcessingUrl(PATH_REST_USER_AUTHENTICATE) //
 				.successHandler(authenticationSuccessHandler(null));
-//		LoginFilter loginFilter = new LoginFilter();
-//		loginFilter
-//				.setRequiresAuthenticationRequestMatcher(new AntPathRequestMatcher(PATH_REST_USER_AUTHENTICATE + "2"));
-//		http.addFilter(loginFilter);
 		http.logout().logoutUrl("/rest/user/logout") //
 				.logoutSuccessUrl("/rest/user/info");
 		http.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse());
 		DefaultSecurityFilterChain build = http.build();
-//		loginFilter.setAuthenticationManager(http.getSharedObject(AuthenticationManager.class));
 		return build;
 	}
 

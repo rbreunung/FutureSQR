@@ -56,7 +56,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 	@Override
 	protected String obtainUsername(HttpServletRequest request) {
 		try {
-			byte[] bytes = request.getPart(UserProperties.LOGIN_NAME).getInputStream().readAllBytes();
+			byte[] bytes = request.getPart("username").getInputStream().readAllBytes();
 			return new String(bytes);
 		} catch (IOException | ServletException e) {
 			log.error("Cannot read login name from submit.", e);
