@@ -24,12 +24,10 @@
 package de.futuresqr.server.rest.user;
 
 import static de.futuresqr.server.SecurityConfiguration.PATH_REST_USER_AUTHENTICATE;
-import static de.futuresqr.server.model.frontend.UserProperties.LOGIN_NAME;
 import static de.futuresqr.server.model.frontend.UserProperties.PASSWORD;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.HttpHeaders.COOKIE;
-import static org.springframework.http.HttpHeaders.LOCATION;
 import static org.springframework.http.HttpHeaders.SET_COOKIE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -99,6 +97,7 @@ public class LoginTest {
 		assertEquals(403, postResponse.getStatusCode().value(), "Access shall be forbidden with missing session.");
 	}
 
+	@SuppressWarnings("null")
 	@Test
 	public void postLogin_validRequestFormCsrfToken_authenticationRedirection() {
 
@@ -112,11 +111,11 @@ public class LoginTest {
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(body, header),
 				String.class);
 
-		assertTrue(postResponse.getStatusCode().is3xxRedirection(), "User will be redirected.");
-		assertTrue(postResponse.getHeaders().get(LOCATION).get(0).contains("/rest/user/info"),
-				"Redirect to user info expected.");
+		assertTrue(postResponse.getStatusCode().is2xxSuccessful(), "User will be accepted.");
+		assertTrue(postResponse.getBody().contains("\"loginname\":\"admin\""), "Response contains user object.");
 	}
 
+	@SuppressWarnings("null")
 	@Test
 	public void postLogin_validRequestHeaderCsrfToken_authenticationRedirection() {
 		CsrfDto csrfData = csrfEntity.getBody();
@@ -129,9 +128,8 @@ public class LoginTest {
 		ResponseEntity<String> postResponse = webclient.postForEntity(uri, new HttpEntity<>(body, header),
 				String.class);
 
-		assertTrue(postResponse.getStatusCode().is3xxRedirection(), "User will be redirected.");
-		assertTrue(postResponse.getHeaders().get(LOCATION).get(0).contains("/rest/user/info"),
-				"Redirect to user info expected.");
+		assertTrue(postResponse.getStatusCode().is2xxSuccessful(), "User will be accepted.");
+		assertTrue(postResponse.getBody().contains("\"loginname\":\"admin\""), "Response contains user object.");
 	}
 
 	@Test
@@ -226,6 +224,7 @@ public class LoginTest {
 		csrfEntity = getCsfrEntity();
 	}
 
+	@SuppressWarnings("null")
 	@Test
 	public void getLogin_validRequestWithAuthentication_messageReplied() {
 		CsrfDto csrfData = csrfEntity.getBody();
@@ -251,6 +250,7 @@ public class LoginTest {
 		assertEquals(randomMessage, postResponse.getBody(), "Answer shall return the message.");
 	}
 
+	@SuppressWarnings("null")
 	@Test
 	public void getUser_validRequestWithAuthentication_statusOk() {
 
@@ -290,6 +290,7 @@ public class LoginTest {
 	/**
 	 * Get the cookie set by the server response.
 	 */
+	@SuppressWarnings("null")
 	private String getFirstNewCookieContent(ResponseEntity<?> entity) {
 		List<String> list = entity.getHeaders().get(SET_COOKIE);
 		assertEquals(1, list.size(), "Expect a cookie set request.");
@@ -341,7 +342,7 @@ public class LoginTest {
 
 	private LinkedMultiValueMap<String, String> getLoginFormBody() {
 		LinkedMultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
-		body.add(LOGIN_NAME, "admin");
+		body.add("username", "admin");
 		body.add(PASSWORD, "admin");
 		return body;
 	}
@@ -392,6 +393,7 @@ public class LoginTest {
 		return getSessionHeader(csrfData, loginResponse, true, true, true);
 	}
 
+	@SuppressWarnings("null")
 	private HttpHeaders getSessionHeader(CsrfDto csrfData, ResponseEntity<?> loginResponse, boolean addSessionCookie,
 			boolean addCsrfCookie, boolean updateCsfrToken) {
 		List<String> newCookies = loginResponse.getHeaders().get(SET_COOKIE);
