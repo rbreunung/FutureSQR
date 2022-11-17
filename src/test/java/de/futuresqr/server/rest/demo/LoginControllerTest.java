@@ -57,6 +57,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class LoginControllerTest {
 
+	private static final String REST_PATH_CSRF = "/rest/user/csrf";
+
 	private static final String MESSAGE = "message";
 
 	@LocalServerPort
@@ -69,7 +71,7 @@ public class LoginControllerTest {
 	public void postLoginTest_misssingCsfr_messageReplied() {
 
 		ResponseEntity<CsrfDto> csrfEntity = webclient
-				.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf", CsrfDto.class);
+				.getForEntity("http://localhost:" + serverPort + REST_PATH_CSRF, CsrfDto.class);
 		String sessionId = getNewSetCookieContent(csrfEntity);
 		String uri = getLoginUri(null);
 		HttpHeaders header = getHeader(null, sessionId);
@@ -83,7 +85,7 @@ public class LoginControllerTest {
 	public void postLoginTest_validRequestWithCookieAuthentication_messageReplied() {
 
 		ResponseEntity<CsrfDto> csrfEntity = webclient
-				.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf", CsrfDto.class);
+				.getForEntity("http://localhost:" + serverPort + REST_PATH_CSRF, CsrfDto.class);
 		CsrfDto csrfData = csrfEntity.getBody();
 		String sessionId = getNewSetCookieContent(csrfEntity);
 		String uri = getLoginUri(null);
@@ -98,7 +100,7 @@ public class LoginControllerTest {
 	public void postLoginTest_validRequestWithUrlAuthentication_messageReplied() {
 
 		ResponseEntity<CsrfDto> csrfEntity = webclient
-				.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf", CsrfDto.class);
+				.getForEntity("http://localhost:" + serverPort + REST_PATH_CSRF, CsrfDto.class);
 		CsrfDto csrfData = csrfEntity.getBody();
 		String sessionId = getNewSetCookieContent(csrfEntity);
 		String uri = getLoginUri(csrfData);
@@ -112,7 +114,7 @@ public class LoginControllerTest {
 	@Test
 	public void postLoginTest_validRequestWithUrlAuthentication_sameCsrfToken() {
 
-		final String getCsfrUri = "http://localhost:" + serverPort + "/rest/login/csrf";
+		final String getCsfrUri = "http://localhost:" + serverPort + REST_PATH_CSRF;
 		ResponseEntity<CsrfDto> csrfEntity = webclient.getForEntity(getCsfrUri, CsrfDto.class);
 		CsrfDto csrfData = csrfEntity.getBody();
 		String sessionId = getNewSetCookieContent(csrfEntity);
@@ -130,7 +132,7 @@ public class LoginControllerTest {
 	@Test
 	public void postTest_authenticated_success() {
 
-		final String getCsfrUri = "http://localhost:" + serverPort + "/rest/login/csrf";
+		final String getCsfrUri = "http://localhost:" + serverPort + REST_PATH_CSRF;
 		ResponseEntity<CsrfDto> csrfResponse = webclient.getForEntity(getCsfrUri, CsrfDto.class);
 
 		CsrfDto csrfData = csrfResponse.getBody();

@@ -20,6 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CsrfControllerTest {
 
+	private static final String REST_PATH_CSRF = "/rest/user/csrf";
+
 	@LocalServerPort
 	int serverPort;
 
@@ -28,7 +30,7 @@ public class CsrfControllerTest {
 
 	@Test
 	public void getCsrf() {
-		ResponseEntity<String> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
+		ResponseEntity<String> entity = webclient.getForEntity("http://localhost:" + serverPort + REST_PATH_CSRF,
 				String.class);
 		log.info(entity.getHeaders().toString());
 		log.info(entity.getBody());
@@ -36,7 +38,7 @@ public class CsrfControllerTest {
 
 	@Test
 	public void getCsrf_validRequest_cookiePresent() {
-		ResponseEntity<String> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
+		ResponseEntity<String> entity = webclient.getForEntity("http://localhost:" + serverPort + REST_PATH_CSRF,
 				String.class);
 
 		String result = getNewSetCookieContent(entity);
@@ -46,7 +48,7 @@ public class CsrfControllerTest {
 	@Test
 	public void getCsrf_validUrl_headerNamePresent() throws Exception {
 
-		ResponseEntity<CsrfDto> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
+		ResponseEntity<CsrfDto> entity = webclient.getForEntity("http://localhost:" + serverPort + REST_PATH_CSRF,
 				CsrfDto.class);
 
 		CsrfDto json = entity.getBody();
@@ -56,7 +58,7 @@ public class CsrfControllerTest {
 	@Test
 	public void getCsrf_validUrl_paramNamePresent() throws Exception {
 
-		ResponseEntity<CsrfDto> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
+		ResponseEntity<CsrfDto> entity = webclient.getForEntity("http://localhost:" + serverPort + REST_PATH_CSRF,
 				CsrfDto.class);
 
 		CsrfDto json = entity.getBody();
@@ -66,7 +68,7 @@ public class CsrfControllerTest {
 	@Test
 	public void getCsrf_validUrl_tokenPresent() throws Exception {
 
-		ResponseEntity<CsrfDto> entity = webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf",
+		ResponseEntity<CsrfDto> entity = webclient.getForEntity("http://localhost:" + serverPort + REST_PATH_CSRF,
 				CsrfDto.class);
 
 		CsrfDto json = entity.getBody();

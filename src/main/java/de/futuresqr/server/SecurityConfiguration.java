@@ -56,7 +56,7 @@ public class SecurityConfiguration {
 
 		http.authorizeHttpRequests() // authorization section
 				// rest login area
-				.antMatchers("/rest/login/**", "/rest/user/info", "/rest/user/reauthenticate").permitAll()
+				.antMatchers("/rest/login/**", "/rest/user/csrf", "/rest/user/info", "/rest/user/reauthenticate").permitAll()
 				// demo end point for SayHello.java
 				.antMatchers("/rest/say-hello").permitAll()
 				// user repository area

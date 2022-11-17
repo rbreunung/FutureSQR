@@ -65,6 +65,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class LoginTest {
 
+	private static final String REST_PATH_CSRF = "/rest/user/csrf";
+
 	@LocalServerPort
 	int serverPort;
 
@@ -284,7 +286,7 @@ public class LoginTest {
 	}
 
 	private ResponseEntity<CsrfDto> getCsfrEntity() {
-		return webclient.getForEntity("http://localhost:" + serverPort + "/rest/login/csrf", CsrfDto.class);
+		return webclient.getForEntity("http://localhost:" + serverPort + REST_PATH_CSRF, CsrfDto.class);
 	}
 
 	/**
@@ -335,7 +337,7 @@ public class LoginTest {
 	 */
 	private ResponseEntity<CsrfDto> getLoginCsrfToken(HttpHeaders header) {
 		ResponseEntity<CsrfDto> newCsrfEntity = webclient.exchange(
-				"http://localhost:" + serverPort + "/rest/login/csrf", GET, new HttpEntity<>(header), CsrfDto.class);
+				"http://localhost:" + serverPort + REST_PATH_CSRF, GET, new HttpEntity<>(header), CsrfDto.class);
 		log.trace("Session and CSFR after login : {} {}", header, newCsrfEntity.getBody());
 		return newCsrfEntity;
 	}
