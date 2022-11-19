@@ -24,8 +24,14 @@
 package de.futuresqr.server.rest.demo;
 
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * This controller provides on request the CSRF token belonging to the current
@@ -34,10 +40,26 @@ import org.springframework.web.bind.annotation.RestController;
  * @author Robert Breunung
  */
 @RestController
+@Slf4j
 public class CsrfController {
 
+	private HttpSessionCsrfTokenRepository tokenRepo = new HttpSessionCsrfTokenRepository();
+
 	@GetMapping("/rest/user/csrf")
-	public CsrfToken csrf(CsrfToken token) {
-		return token;
+	public CsrfToken csrf(HttpServletRequest request, HttpServletResponse response) {
+
+		CsrfToken repoToken = tokenRepo.loadToken(request);
+		if (repoToken != null) {
+			log.info("Existing token: {}", repoToken.getToken());
+			return repoToken;
+		}
+		HttpSession session = request.getSession(false);
+		if (session == null) {
+			session = request.getSession();
+		}
+		repoToken = tokenRepo.generateToken(request);
+		tokenRepo.saveToken(repoToken, request, response);
+		log.info("New token: {}", repoToken.getToken());
+		return repoToken;
 	}
 }

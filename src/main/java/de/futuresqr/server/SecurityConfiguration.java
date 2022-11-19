@@ -56,13 +56,14 @@ public class SecurityConfiguration {
 
 		http.authorizeHttpRequests() // authorization section
 				// rest login area
-				.antMatchers("/rest/login/**", "/rest/user/csrf", "/rest/user/info", "/rest/user/reauthenticate").permitAll()
+				.requestMatchers("/rest/login/**", "/rest/user/csrf", "/rest/user/info", "/rest/user/reauthenticate")
+				.permitAll()
 				// demo end point for SayHello.java
-				.antMatchers("/rest/say-hello").permitAll()
+				.requestMatchers("/rest/say-hello").permitAll()
 				// user repository area
-				.antMatchers(PATH_REST).authenticated()
+				.requestMatchers(PATH_REST).authenticated()
 				// plain data repository area
-				.antMatchers(PATH_RESTDATA).hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
+				.requestMatchers(PATH_RESTDATA).hasRole(FsqrUserDetailsManager.ROLE_ADMIN);
 		http.apply(new LoginConfigurer<>()).loginProcessingUrl(PATH_REST_USER_AUTHENTICATE) //
 				.successHandler(authenticationSuccessHandler(null));
 		http.logout().logoutUrl("/rest/user/logout") //

@@ -42,6 +42,7 @@ public class CsrfControllerTest {
 				String.class);
 
 		String result = getNewSetCookieContent(entity);
+		log.info("Received cookie: {}", result);
 		assertTrue(result.matches("^XSRF-TOKEN=[a-f0-9\\-]+$"));
 	}
 
